@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generar Código QR - Sistema de Ubicación</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .section {
+            margin: 30px 0;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .section p {
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        .input-group {
+            margin: 20px 0;
+        }
+        
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        @media (max-width: 768px) {
+            #historial-tabla th,
+            #historial-tabla td {
+                padding: 8px;
+                font-size: 14px;
+            }
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .qr-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            border: 2px solid #ddd;
+            display: none;
+        }
+        
+        .qr-container.active {
+            display: block;
+        }
+        
+        .qr-container img {
+            max-width: 300px;
+            width: 100%;
+            margin: 20px 0;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            padding: 10px;
+            background: white;
+        }
+        
+        .codigo-display {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 15px 0;
+            word-break: break-all;
+            text-align: center;
+        }
+        
+        .copy-button {
+            background: #48bb78;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px auto;
+            display: block;
+        }
+        
+        .copy-button:hover {
+            background: #38a169;
+        }
+        
+        .download-button {
+            background: #3182ce;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px auto;
+            display: block;
+        }
+        
+        .download-button:hover {
+            background: #2c5282;
+        }
+        
+        .status-message {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .status-success {
+            background: #d4f5d4;
+            color: #22863a;
+            border: 1px solid #48bb78;
+            display: block;
+        }
+        
+        .status-error {
+            background: #fadad1;
+            color: #cb2431;
+            border: 1px solid #e74c3c;
+            display: block;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #1976d2;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            color: #1555b2;
+        }
+        
+        .steps {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+        
+        .steps li {
+            counter-increment: step-counter;
+            padding: 12px;
+            margin: 10px 0;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .steps li:before {
+            content: counter(step-counter);
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .redirect-button {
+            background: #764ba2;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 15px auto;
+            display: block;
+            transition: all 0.3s;
+        }
+        
+        .redirect-button:hover {
+            background: #5a3a7a;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="text-align:right; font-size:14px; margin-bottom:10px;">
+            {% if request.session.user %}
+                Usuario: <strong>{{ request.session.user }}</strong> |
+                <a href="/logout" style="color:#667eea; text-decoration:none;">Cerrar sesión</a>
+            {% endif %}
+        </div>
+        <h1>🏷️ Generar Código QR</h1>
+        <p class="subtitle">Crea un código QR único para tu vehículo. Imprime o captura la imagen y pégalo en tu carro.</p>
+        
+        <div class="section">
+            <h2>📱 ¿Cómo funciona?</h2>
+            <ol class="steps">
+                <li><strong>Genera</strong> un código QR único para tu vehículo</li>
+                <li><strong>Imprime o captura</strong> la imagen del código</li>
+                <li><strong>Pega el QR</strong> en tu vehículo (parabrisas, espejo, etc)</li>
+                <li><strong>Escanea</strong> el código en la app para registrar ubicación</li>
+            </ol>
+        </div>
+        
+        <div class="input-group">
+            <label for="codigo-manual">O genera un código manualmente (Código único):</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="codigo-manual" placeholder="Ej: veh_a1b2c3d4" style="flex: 1;">
+                <button class="btn-primary" onclick="generarQRManual()" style="flex: 0 0 auto; width: auto;">Generar</button>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-primary" onclick="generarQRAutomatico()">✨ Generar QR Automático</button>
+            <button class="btn-secondary" onclick="window.location.href='/'">← Volver a Escanear</button>
+        </div>
+        
+        <div class="section">
+            <h2>🔍 Ver Historial</h2>
+            <p>¿Quieres ver el historial de un vehículo que ya escaneaste?</p>
+            
+            <div class="input-group">
+                <label for="codigo-historial">Código o Nombre del Vehículo:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="codigo-historial" placeholder="Ej: veh_a1b2c3d4" style="flex: 1;">
+                    <button class="btn-primary" onclick="buscarHistorial()" style="flex: 0 0 auto; width: auto; padding: 12px 20px;">Ver Historial</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Contenedor para mostrar historial -->
+        <div id="historial-resultado" style="display: none;">
+            <div class="info-box" style="background: #f0f4ff; border-color: #667eea;">
+                <h3 id="historial-titulo" style="margin-bottom: 10px; color: #667eea;">Historial del Vehículo</h3>
+                <p id="historial-info" style="margin: 0;"></p>
+            </div>
+            
+            <div class="table-responsive">
+            <table id="historial-tabla" style="display: none; width: 100%; border-collapse: collapse; margin-top: 20px;">
+                <thead>
+                    <tr style="background: #667eea; color: white;">
+                        <th style="padding: 12px; text-align: left;">#</th>
+                        <th style="padding: 12px; text-align: left;">Fecha y Hora</th>
+                        <th style="padding: 12px; text-align: left;">Latitud</th>
+                        <th style="padding: 12px; text-align: left;">Longitud</th>
+                        <th style="padding: 12px; text-align: left;">Dirección</th>
+                    </tr>
+                </thead>
+                <tbody id="historial-tbody">
+                </tbody>
+            </table>
+            </div>
+        </div>
+        
+        <div id="status-message" class="status-message"></div>
+        
+        <div id="qr-result" class="qr-container">
+            <h2>✅ ¡Código QR Generado!</h2>
+            
+            <p>Código único del vehículo:</p>
+            <div class="codigo-display" id="codigo-qr-display"></div>
+            
+            <p>Imagen del código QR:</p>
+            <img id="qr-image" src="" alt="Código QR">
+            
+            <button class="copy-button" onclick="copiarAlPortapapeles()">📋 Copiar Código</button>
+            <button class="download-button" onclick="descargarQR()">⬇️ Descargar Imagen</button>
+            
+            <div class="info-box">
+                💡 Puedes:
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li>Imprimir la imagen</li>
+                    <li>Capturar screenshot en tu celular</li>
+                    <li>Enviar por email</li>
+                    <li>Guardar en una carpeta</li>
+                </ul>
+            </div>
+            
+            <button class="redirect-button" onclick="generarOtro()">🔄 Generar Otro QR</button>
+            <button class="redirect-button" onclick="irAEscanear()">🔍 Ir a Escanear</button>
+        </div>
+    </div>
+
+    <script>
+        async function buscarHistorial() {
+                const termino = document.getElementById("codigo-historial").value.trim();
+                
+                if (!termino) {
+                    alert("Por favor ingresa un código o nombre de vehículo");
+                    return;
+                }
+
+                let url;
+                // si el término empieza por "veh_" lo tratamos como código
+                if (termino.toLowerCase().startsWith("veh_")) {
+                    url = `/api/historial/${termino}`;
+                } else {
+                    // de lo contrario buscamos por nombre
+                    url = `/api/historial/nombre/${encodeURIComponent(termino)}`;
+                }
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error("No encontrado");
+
+                    const data = await response.json();
+                    
+                    document.getElementById("historial-resultado").style.display = "block";
+                    document.getElementById("historial-titulo").textContent = `📊 ${data.vehicle_name}`;
+                    document.getElementById("historial-info").textContent = `Total de registros: ${data.total_registros}`;
+                    
+                    if (data.total_registros === 0) {
+                        document.getElementById("historial-tabla").style.display = "none";
+                        return;
+                    }
+                    
+                    const tbody = document.getElementById("historial-tbody");
+                    tbody.innerHTML = "";
+                    
+                    data.locations.forEach((loc, index) => {
+                        const row = document.createElement("tr");
+                        row.style.borderBottom = "1px solid #ddd";
+                        row.innerHTML = `
+                            <td style="padding: 12px;">${index + 1}</td>
+                            <td style="padding: 12px;">${loc.fecha_formateada}</td>
+                            <td style="padding: 12px;"><code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px;">${loc.latitude.toFixed(6)}</code></td>
+                            <td style="padding: 12px;"><code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px;">${loc.longitude.toFixed(6)}</code></td>
+                            <td style="padding: 12px;" class="address-cell">Cargando...</td>
+                            <td style="padding: 12px;">${data.origen || ''}</td>
+                            <td style="padding: 12px;">${data.destino || ''}</td>
+                            <td style="padding: 12px;">${data.responsable_origen || ''}</td>
+                            <td style="padding: 12px;">${data.responsable_destino || ''}</td>
+                            <td style="padding: 12px;">${data.nivel_gasolina != null ? data.nivel_gasolina : ''}</td>
+                            <td style="padding: 12px;">${data.kilometraje != null ? data.kilometraje : ''}</td>
+                            <td style="padding: 12px;">${data.observaciones || ''}</td>
+                        `;
+                        tbody.appendChild(row);
+                        getAddress(loc.latitude, loc.longitude).then(addr => {
+                            row.querySelector('.address-cell').textContent = addr;
+                        });
+                    });
+                    
+                    document.getElementById("historial-tabla").style.display = "table";
+                } catch (error) {
+                    document.getElementById("historial-resultado").style.display = "block";
+                    document.getElementById("historial-info").innerHTML = `<strong style="color: red;">❌ Vehículo no encontrado</strong><br>Verifica el código o nombre e intenta de nuevo.`;
+            }
+        }
+        
+        // ayuda: geocodificar coordenadas
+        async function getAddress(lat, lon) {
+            try {
+                const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+                if (!resp.ok) return 'N/D';
+                const data = await resp.json();
+                if (data && data.address) {
+                    const addr = data.address;
+                    const parts = [];
+                    if (addr.road) parts.push(addr.road);
+                    if (addr.house_number) parts.push(addr.house_number);
+                    if (addr.neighbourhood) parts.push(addr.neighbourhood);
+                    if (addr.suburb) parts.push(addr.suburb);
+                    if (parts.length) return parts.join(' ');
+                }
+                return data.display_name || 'N/D';
+            } catch (e) {
+                return 'N/D';
+            }
+        }
+        
+        // Permitir buscar con Enter
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputHistorial = document.getElementById("codigo-historial");
+            if (inputHistorial) {
+                inputHistorial.addEventListener("keypress", function(e) {
+                    if (e.key === "Enter") buscarHistorial();
+                });
+            }
+        });
+        
+        async function generarQRAutomatico() {
+            const resultDiv = document.getElementById("qr-result");
+            const statusDiv = document.getElementById("status-message");
+            
+            statusDiv.innerHTML = "⏳ Generando código QR...";
+            statusDiv.className = "status-message status-success";
+            
+            try {
+                const response = await fetch("/api/generar-qr", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById("codigo-qr-display").textContent = data.codigo_qr;
+                    document.getElementById("qr-image").src = data.qr_image;
+                    resultDiv.classList.add("active");
+                    statusDiv.innerHTML = "✅ Código QR generado correctamente";
+                    statusDiv.className = "status-message status-success";
+                    window.generatedQR = data;
+                } else {
+                    statusDiv.innerHTML = "❌ Error al generar: " + (data.error || "Desconocido");
+                    statusDiv.className = "status-message status-error";
+                }
+            } catch (error) {
+                statusDiv.innerHTML = "❌ Error: " + error.message;
+                statusDiv.className = "status-message status-error";
+            }
+        }
+        
+        function generarQRManual() {
+            const codigo = document.getElementById("codigo-manual").value.trim();
+            
+            if (!codigo) {
+                alert("Por favor ingresa un código");
+                return;
+            }
+            
+            // Llamar a la lógica para generar QR con código manual
+            // Por ahora, mostramos error
+            alert("⏳ Esta funcionalidad está optimizando. Por favor usa 'Generar QR Automático'");
+        }
+        
+        function copiarAlPortapapeles() {
+            const codigo = document.getElementById("codigo-qr-display").textContent;
+            navigator.clipboard.writeText(codigo).then(() => {
+                alert("✅ Código copiado al portapapeles: " + codigo);
+            });
+        }
+        
+        function descargarQR() {
+            if (!window.generatedQR) return;
+            
+            const link = document.createElement('a');
+            link.href = window.generatedQR.qr_image;
+            link.download = `codigo_qr_${window.generatedQR.codigo_qr}.png`;
+            link.click();
+        }
+        
+        function generarOtro() {
+            document.getElementById("qr-result").classList.remove("active");
+            document.getElementById("status-message").innerHTML = "";
+            document.getElementById("codigo-manual").value = "";
+        }
+        
+        function irAEscanear() {
+            if (!window.generatedQR) {
+                alert("Por favor genera un código QR primero");
+                return;
+            }
+            window.location.href = "/?codigo=" + window.generatedQR.codigo_qr;
+        }
+    </script>
+</body>
+</html>

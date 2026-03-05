@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ubicación de Vehículos</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+        
+        .section {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        p {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        
+        /* QR Scanner */
+        #qr-reader {
+            width: 100%;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .scanner-placeholder {
+            width: 100%;
+            height: 300px;
+            background: #f5f5f5;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            margin: 20px 0;
+        }
+        
+        /* Formulario */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        input[type="text"],
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        /* Mapa */
+        #map {
+            height: 400px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .location-display {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+        
+        /* Botones */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+        }
+        
+        /* Estado y alertas */
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+        
+        .status-success {
+            background: #d4f5d4;
+            color: #22863a;
+            border: 1px solid #48bb78;
+        }
+        
+        .status-loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #667eea;
+        }
+        
+        .status-error {
+            background: #fadad1;
+            color: #cb2431;
+            border: 1px solid #e74c3c;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
+        .summary-card h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .summary-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .summary-label {
+            font-weight: 600;
+        }
+        
+        .summary-value {
+            opacity: 0.95;
+        }
+        
+        .icon {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- user info bar -->
+        <div style="text-align:right; font-size:14px; margin-bottom:10px;">
+            {% if request.session.user %}
+                Usuario: <strong>{{ request.session.user }}</strong> |
+                <a href="/logout" style="color:#667eea; text-decoration:none;">Cerrar sesión</a>
+            {% endif %}
+        </div>
+        <!-- SECCIÓN 1: Escanear QR -->
+        <div id="section-scan" class="section active">
+            <h1>📱 Escanear Código QR</h1>
+            <p>Apunta tu cámara al código QR pegado en el vehículo</p>
+            
+            <div class="info-box">
+                <p>💡 <strong>¿No tienes código QR?</strong> <a href="/generar-qr" style="color: #667eea; font-weight: bold; text-decoration: none;">Crea uno aquí →</a></p>
+            </div>
+            
+            <!-- Indicador de permisos de cámara -->
+            <div id="camera-status" style="text-align: center; margin: 15px 0; color: #999; font-size: 14px;">
+                ⏳ Inicializando cámara...
+            </div>
+            <!-- Debug: muestra errores detallados de getUserMedia -->
+            <div id="camera-debug" style="text-align:center; color:#cb2431; font-size:13px; display:none; margin-bottom:10px;"></div>
+            
+            <!-- QR Reader Container -->
+            <div style="position: relative; background: #000; border-radius: 10px; overflow: hidden; margin: 20px 0;">
+                <div id="qr-reader" style="width: 100%;"></div>
+                <div id="scanner-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">
+                    <svg width="250" height="250" viewBox="0 0 250 250" style="filter: drop-shadow(0 0 10px rgba(102, 126, 234, 0.8));">
+                        <!-- Esquinas del scanner -->
+                        <g stroke="#667eea" stroke-width="3" fill="none">
+                            <!-- Esquina superior izquierda -->
+                            <line x1="10" y1="10" x2="50" y2="10"/>
+                            <line x1="10" y1="10" x2="10" y2="50"/>
+                            
+                            <!-- Esquina superior derecha -->
+                            <line x1="240" y1="10" x2="200" y2="10"/>
+                            <line x1="240" y1="10" x2="240" y2="50"/>
+                            
+                            <!-- Esquina inferior izquierda -->
+                            <line x1="10" y1="240" x2="50" y2="240"/>
+                            <line x1="10" y1="240" x2="10" y2="200"/>
+                            
+                            <!-- Esquina inferior derecha -->
+                            <line x1="240" y1="240" x2="200" y2="240"/>
+                            <line x1="240" y1="240" x2="240" y2="200"/>
+                        </g>
+                        
+                        <!-- Línea de escaneo animada -->
+                        <line x1="30" y1="125" x2="220" y2="125" stroke="#667eea" stroke-width="2" opacity="0.5">
+                            <animate attributeName="y1" values="30;220;30" dur="2s" repeatCount="indefinite"/>
+                            <animate attributeName="y2" values="30;220;30" dur="2s" repeatCount="indefinite"/>
+                        </line>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- Instrucciones -->
+            <div class="info-box">
+                <strong>📸 Instrucciones:</strong>
+                <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">
+                    <li>Coloca el código QR dentro del marco</li>
+                    <li>Asegúrate de que la luz sea suficiente</li>
+                    <li>Mantén la cámara enfocada</li>
+                    <li>Espera a que se detecte automáticamente</li>
+                </ul>
+            </div>
+            
+            <!-- Entrada manual con mejor UX -->
+            <div style="margin-top: 20px; padding: 15px; background: #f0f4ff; border-radius: 8px; border: 2px dashed #667eea;">
+                <p style="color: #666; margin-bottom: 10px; font-size: 14px;">
+                    🔧 Si el scanner no funciona, ingresa el código manualmente:
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="manual-code" placeholder="Ej: veh_a1b2c3d4" 
+                           style="flex: 1; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;">
+                    <button class="btn-primary" onclick="processQRManual()" style="flex: 0 0 auto; padding: 10px 20px;">Usar</button>
+                </div>
+            </div>
+            
+            <!-- Link a generar QR -->
+            <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                <small style="color: #999;">
+                    ¿Necesitas crear un código QR para tu vehículo?
+                </small>
+                <br>
+                <a href="/generar-qr" style="color: #667eea; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 10px; margin-right: 15px;">
+                    → Generar código QR →
+                </a>
+                <a href="/historial" style="color: #764ba2; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 10px;">
+                    📊 Ver Historial →
+                </a>
+            </div>
+        </div>
+        
+        <!-- SECCIÓN 2: Registrar nuevo vehículo -->
+        <div id="section-register" class="section">
+            <h1>🚗 Registrar Nuevo Vehículo</h1>
+            <p>Este código QR aún no está registrado. Por favor completa los datos:</p>
+            
+            <div class="form-group">
+                <label>Código del Vehículo:</label>
+                <input type="text" id="vehicle-code-display" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label>Nombre/Placa del Vehículo:</label>
+                <input type="text" id="vehicle-name" placeholder="Ej: Toyota 2020 ABC123" required>
+            </div>
+            <!-- campos adicionales solicitados -->
+            <div class="form-group">
+                <label>Origen:</label>
+                <input type="text" id="vehicle-origen" placeholder="Ej: Bogotá">
+            </div>
+            <div class="form-group">
+                <label>Destino:</label>
+                <input type="text" id="vehicle-destino" placeholder="Ej: Medellín">
+            </div>
+            <div class="form-group">
+                <label>Responsable Origen:</label>
+                <input type="text" id="vehicle-resp-origen" placeholder="Nombre">
+            </div>
+            <div class="form-group">
+                <label>Responsable Destino:</label>
+                <input type="text" id="vehicle-resp-destino" placeholder="Nombre">
+            </div>
+            <div class="form-group">
+                <label>Nivel de gasolina:</label>
+                <input type="number" step="0.1" id="vehicle-nivel" placeholder="Litros o %">
+            </div>
+            <div class="form-group">
+                <label>Kilometraje:</label>
+                <input type="number" step="0.1" id="vehicle-km" placeholder="Km">
+            </div>
+            <div class="form-group">
+                <label>Observaciones:</label>
+                <textarea id="vehicle-observaciones" rows="2" placeholder="Comentarios adicionales"></textarea>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="goBackToScan()">← Volver</button>
+                <button class="btn-primary" onclick="registerVehicle()">Registrar Vehículo →</button>
+            </div>
+        </div>
+        
+        <!-- SECCIÓN 2B: Editar datos de vehículo existente -->
+        <div id="section-edit-vehicle" class="section">
+            <h1>🚗 Actualizar Datos del Vehículo</h1>
+            <p>Este vehículo ya está registrado. Actualiza los datos si es necesario:</p>
+            
+            <div class="form-group">
+                <label>Nombre/Placa del Vehículo (no editable):</label>
+                <input type="text" id="edit-vehicle-name" readonly style="background:#f0f0f0; cursor:not-allowed;">
+            </div>
+            
+            <div class="form-group">
+                <label>Origen:</label>
+                <input type="text" id="edit-vehicle-origen" placeholder="Ej: Bogotá">
+            </div>
+            <div class="form-group">
+                <label>Destino:</label>
+                <input type="text" id="edit-vehicle-destino" placeholder="Ej: Medellín">
+            </div>
+            <div class="form-group">
+                <label>Responsable Origen:</label>
+                <input type="text" id="edit-vehicle-resp-origen" placeholder="Nombre">
+            </div>
+            <div class="form-group">
+                <label>Responsable Destino:</label>
+                <input type="text" id="edit-vehicle-resp-destino" placeholder="Nombre">
+            </div>
+            <div class="form-group">
+                <label>Nivel de gasolina:</label>
+                <input type="number" step="0.1" id="edit-vehicle-nivel" placeholder="Litros o %">
+            </div>
+            <div class="form-group">
+                <label>Kilometraje:</label>
+                <input type="number" step="0.1" id="edit-vehicle-km" placeholder="Km">
+            </div>
+            <div class="form-group">
+                <label>Observaciones:</label>
+                <textarea id="edit-vehicle-observaciones" rows="2" placeholder="Comentarios adicionales"></textarea>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="goBackToScan()">← Volver</button>
+                <button class="btn-primary" onclick="updateExistingVehicle()">Guardar y Continuar →</button>
+            </div>
+        </div>
+        
+        <!-- SECCIÓN 3: Capturar ubicación -->
+        <div id="section-location" class="section">
+            <h1>📍 Ubicación del Vehículo</h1>
+            
+            <div id="vehicle-info" class="info-box">
+                <!-- Se llena dinámicamente -->
+            </div>
+            
+            <div id="location-status" class="status status-loading">
+                <div class="loading-spinner"></div> Obteniendo ubicación GPS...
+            </div>
+            
+            <div id="map"></div>
+            
+            <div id="location-coords" class="location-display" style="display: none;"></div>
+            
+            <p style="color: #999; font-size: 14px; text-align: center;">
+                ✓ Tu ubicación ha sido capturada. Haz clic en "Buscar Ubicación" para confirmar y guardarla.
+            </p>
+            
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="goBackToScan()">← Escanear otro</button>
+                <button class="btn-success" onclick="confirmLocation()">🔍 Buscar Ubicación</button>
+            </div>
+        </div>
+        
+        <!-- SECCIÓN 4: Confirmación final -->
+        <div id="section-confirm" class="section">
+            <h1>✅ ubicación Confirmada</h1>
+            
+            <div class="summary-card">
+                <h3>📌 Resumen del Registro</h3>
+                
+                <div class="summary-item">
+                    <span class="summary-label"><span class="icon">🚗</span>Vehículo:</span>
+                    <span class="summary-value" id="summary-vehicle"></span>
+                </div>
+                
+                <div class="summary-item">
+                    <span class="summary-label"><span class="icon">📍</span>Latitud:</span>
+                    <span class="summary-value" id="summary-lat"></span>
+                </div>
+                
+                <div class="summary-item">
+                    <span class="summary-label"><span class="icon">📍</span>Longitud:</span>
+                    <span class="summary-value" id="summary-lng"></span>
+                </div>
+                
+                <div class="summary-item">
+                    <span class="summary-label"><span class="icon">🕒</span>Hora:</span>
+                    <span class="summary-value" id="summary-time"></span>
+                </div>
+            </div>
+            
+            <div id="map-confirm" style="display: none; margin: 20px 0;"></div>
+            
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="goBackToScan()">← Escanear otro vehículo</button>
+                <button class="btn-primary" onclick="viewDashboard()">📊 Ver Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Variables globales
+        let currentVehicleCode = null;
+        let currentVehicleName = null;
+        // campos adicionales del vehículo (inicializados aquí)
+        let currentVehicleOrigen = null;
+        let currentVehicleDestino = null;
+        let currentVehicleRespOrigen = null;
+        let currentVehicleRespDestino = null;
+        let currentVehicleNivel = null;
+        let currentVehicleKm = null;
+        let currentVehicleObs = null;
+        let currentLocation = null;
+        let qrScanner = null;
+        let currentMap = null;
+        let currentMapConfirm = null;
+        let scannerInitialized = false;
+        
+        // Inicializar el escáner de QR con mejor manejo de errores
+        function initQRScanner() {
+            try {
+                qrScanner = new Html5Qrcode("qr-reader");
+                
+                // Obtener cámara disponible
+                Html5Qrcode.getCameras().then(devices => {
+                    if (devices && devices.length) {
+                        // preferir la cámara trasera / environment cuando esté disponible
+                        let backCam = devices.find(d => /back|rear|environment|trasera|rear camera|camera rear/i.test(d.label));
+                        let envCam = devices.find(d => /environment/i.test(d.label));
+                        // si no hay etiquetas, usar por defecto el último dispositivo (suele ser la trasera en móviles)
+                        const fallback = devices[devices.length - 1] || devices[0];
+                        const selected = backCam || envCam || fallback;
+                        const cameraId = selected.id;
+                        
+                        qrScanner.start(
+                            cameraId,
+                            {
+                                fps: 15,
+                                qrbox: { width: 250, height: 250 },
+                                aspectRatio: 1
+                            },
+                            onQRCodeScanned,
+                            onQRScanError
+                        ).then(() => {
+                            scannerInitialized = true;
+                            updateCameraStatus("✅ Cámara iniciada. Apunta el QR al marco verde.", "success");
+                        }).catch(err => {
+                            updateCameraStatus("❌ Error al acceder a cámara: " + err.message, "error");
+                            // ejecutar diagnóstico adicional para obtener error detallado en móviles
+                            runCameraDiagnostic(err).catch(()=>{});
+                            // intentar fallback: facingMode environment, luego video:true simple
+                            tryFallbackStarts().catch(() => {
+                                showManualFallback();
+                            });
+                        });
+                    } else {
+                        updateCameraStatus("❌ No se encontró cámara en el dispositivo", "error");
+                        showManualFallback();
+                    }
+                }).catch(err => {
+                    updateCameraStatus("❌ Error al detectar cámara: " + err.message, "error");
+                    showManualFallback();
+                });
+            } catch (error) {
+                console.error("Error al inicializar scanner:", error);
+                updateCameraStatus("❌ No se pudo inicializar el escáner", "error");
+                showManualFallback();
+            }
+        }
+
+        async function tryFallbackStarts() {
+            const options = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1 };
+            const debugDiv = document.getElementById('camera-debug');
+
+            // 1) intentar facingMode environment
+            try {
+                updateCameraStatus('⏳ Intentando cámara trasera (facingMode: environment)...', 'info');
+                await qrScanner.start({ facingMode: { exact: 'environment' } }, options, onQRCodeScanned, onQRScanError);
+                scannerInitialized = true;
+                updateCameraStatus('✅ Cámara iniciada (facingMode: environment).', 'success');
+                return;
+            } catch (errEnv) {
+                console.warn('Fallback environment fallo:', errEnv);
+                if (debugDiv) { debugDiv.style.display='block'; debugDiv.textContent = 'Fallback: facingMode environment falló: ' + (errEnv.message||errEnv); }
+            }
+
+            // 2) intentar facingMode user
+            try {
+                updateCameraStatus('⏳ Intentando cámara frontal (facingMode: user)...', 'info');
+                await qrScanner.start({ facingMode: 'user' }, options, onQRCodeScanned, onQRScanError);
+                scannerInitialized = true;
+                updateCameraStatus('✅ Cámara iniciada (frontal).', 'success');
+                return;
+            } catch (errUser) {
+                console.warn('Fallback user fallo:', errUser);
+                if (debugDiv) { debugDiv.style.display='block'; debugDiv.textContent += ' | facingMode user falló: ' + (errUser.message||errUser); }
+            }
+
+            // 3) intentar getUserMedia simple como diagnóstico adicional
+            try {
+                updateCameraStatus('⏳ Intentando getUserMedia simple...', 'info');
+                await runCameraDiagnostic();
+                // no iniciamos html5-qrcode con stream aquí; el diagnóstico ya mostró el error o éxito
+            } catch (errGM) {
+                console.warn('getUserMedia diagnóstico fallo:', errGM);
+            }
+
+            throw new Error('No se pudo iniciar la cámara con los fallbacks');
+        }
+        
+        function updateCameraStatus(message, type = "info") {
+            const statusDiv = document.getElementById("camera-status");
+            statusDiv.innerHTML = message;
+            statusDiv.style.color = type === "error" ? "#cb2431" : type === "success" ? "#22863a" : "#667eea";
+            statusDiv.style.fontWeight = type === "error" || type === "success" ? "bold" : "normal";
+        }
+        
+        function showManualFallback() {
+            const manualSection = document.querySelector('[style*="dashed"]');
+            if (manualSection) {
+                manualSection.style.background = "#fff3cd";
+                manualSection.style.borderColor = "#ffc107";
+            }
+        }
+
+        async function runCameraDiagnostic(originalError) {
+            // Muestra error detallado del intento de getUserMedia
+            const debugDiv = document.getElementById('camera-debug');
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                debugDiv.style.display = 'block';
+                debugDiv.textContent = 'getUserMedia no está disponible en este navegador.';
+                return;
+            }
+
+            try {
+                // intenta obtener permiso sin constraints complejos para ver el error exacto
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                // si llega aquí, la cámara funciona; detener el stream inmediatamente
+                stream.getTracks().forEach(t => t.stop());
+                debugDiv.style.display = 'block';
+                debugDiv.style.color = '#1976d2';
+                debugDiv.textContent = 'Diagnóstico: getUserMedia OK (la cámara respondió).';
+            } catch (err) {
+                debugDiv.style.display = 'block';
+                debugDiv.style.color = '#cb2431';
+                const name = err.name || 'Error';
+                const msg = err.message || '';
+                debugDiv.textContent = `Diagnóstico: ${name} - ${msg}`;
+                // si hay un error original del html5-qrcode también lo mostramos
+                if (originalError && originalError.message) {
+                    debugDiv.textContent += ` | original: ${originalError.message}`;
+                }
+            }
+        }
+        
+        function onQRCodeScanned(decodedText) {
+            console.log("✅ QR Escaneado:", decodedText);
+            updateCameraStatus("✅ QR detectado! Procesando...", "success");
+            
+            if (qrScanner && scannerInitialized) {
+                qrScanner.stop().then(() => {
+                    scannerInitialized = false;
+                    processQRCode(decodedText);
+                }).catch(err => {
+                    console.error("Error al detener scanner:", err);
+                    processQRCode(decodedText);
+                });
+            } else {
+                processQRCode(decodedText);
+            }
+        }
+        
+        function onQRScanError(error) {
+            // Silenciar errores de lectura normales
+            // console.log("Leyendo QR...");
+        }
+        
+        function processQRManual() {
+            const code = document.getElementById("manual-code").value.trim();
+            if (!code) {
+                alert("❌ Por favor ingresa un código.");
+                return;
+            }
+            
+            if (!code.startsWith("veh_")) {
+                alert("⚠️ El código debe comenzar con 'veh_' (ej: veh_a1b2c3d4)");
+                return;
+            }
+            
+            updateCameraStatus("⏳ Procesando código: " + code, "info");
+            processQRCode(code);
+        }
+        
+        async function processQRCode(code) {
+            console.log("🔄 Procesando nuevo QR:", code);
+            
+            // ===== LIMPIEZA COMPLETE DE DATOS =====
+            // Limpiar variables globales
+            currentVehicleCode = code;  // Solo asignamos el nuevo código
+            currentVehicleName = null;
+            currentVehicleOrigen = null;
+            currentVehicleDestino = null;
+            currentVehicleRespOrigen = null;
+            currentVehicleRespDestino = null;
+            currentVehicleNivel = null;
+            currentVehicleKm = null;
+            currentVehicleObs = null;
+            currentLocation = null;
+            
+            // ===== LIMPIAR TODOS LOS FORMULARIOS =====
+            // Limpiar formulario de registro (section-register)
+            const registerFields = [
+                "vehicle-name", "vehicle-origen", "vehicle-destino", 
+                "vehicle-resp-origen", "vehicle-resp-destino", 
+                "vehicle-nivel", "vehicle-km", "vehicle-observaciones"
+            ];
+            
+            registerFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        el.value = '';
+                    }
+                }
+            });
+            
+            // Limpiar formulario de edición (section-edit-vehicle)
+            const editFields = [
+                "edit-vehicle-name", "edit-vehicle-origen", "edit-vehicle-destino",
+                "edit-vehicle-resp-origen", "edit-vehicle-resp-destino", 
+                "edit-vehicle-nivel", "edit-vehicle-km", "edit-vehicle-observaciones"
+            ];
+            
+            editFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        el.value = '';
+                    }
+                }
+            });
+            
+            // Limpiar código manual
+            const manualCode = document.getElementById("manual-code");
+            if (manualCode) manualCode.value = '';
+            
+            // Limpiar UI elements
+            const infoBox = document.getElementById("vehicle-info");
+            if (infoBox) infoBox.innerHTML = '';
+            
+            const coordsBox = document.getElementById("location-coords");
+            if (coordsBox) { 
+                coordsBox.innerHTML = ''; 
+                coordsBox.style.display = 'none'; 
+            }
+            
+            // Limpiar mapas
+            if (currentMap) { 
+                try { 
+                    currentMap.remove(); 
+                    currentMap = null; 
+                } catch(e){} 
+            }
+            if (currentMapConfirm) { 
+                try { 
+                    currentMapConfirm.remove(); 
+                    currentMapConfirm = null; 
+                } catch(e){} 
+            }
+            
+            try {
+                updateCameraStatus("🔍 Verificando vehículo en base de datos...", "info");
+                
+                const response = await fetch(`/api/vehicle-qr/${encodeURIComponent(code)}`, { method: "POST" });
+                let data;
+                
+                if (response.ok) {
+                    try {
+                        data = await response.json();
+                    } catch (jsonErr) {
+                        const text = await response.text();
+                        throw new Error("Respuesta inválida del servidor: " + text);
+                    }
+                } else {
+                    const text = await response.text();
+                    throw new Error("Error en el servidor: " + text);
+                }
+
+                if (data.exists) {
+                    // Vehículo ya existe - llenar formulario de edición
+                    currentVehicleName = data.vehicle_name;
+                    currentVehicleOrigen = data.origen || '';
+                    currentVehicleDestino = data.destino || '';
+                    currentVehicleRespOrigen = data.responsable_origen || '';
+                    currentVehicleRespDestino = data.responsable_destino || '';
+                    currentVehicleNivel = data.nivel_gasolina || '';
+                    currentVehicleKm = data.kilometraje || '';
+                    currentVehicleObs = data.observaciones || '';
+                    
+                    // Llenar campos de edición
+                    document.getElementById("edit-vehicle-name").value = currentVehicleName;
+                    document.getElementById("edit-vehicle-origen").value = currentVehicleOrigen;
+                    document.getElementById("edit-vehicle-destino").value = currentVehicleDestino;
+                    document.getElementById("edit-vehicle-resp-origen").value = currentVehicleRespOrigen;
+                    document.getElementById("edit-vehicle-resp-destino").value = currentVehicleRespDestino;
+                    document.getElementById("edit-vehicle-nivel").value = currentVehicleNivel || '';
+                    document.getElementById("edit-vehicle-km").value = currentVehicleKm || '';
+                    document.getElementById("edit-vehicle-observaciones").value = currentVehicleObs;
+                    
+                    showSection("section-edit-vehicle");
+                } else {
+                    // Nuevo vehículo - solo mostrar código, campos vacíos
+                    document.getElementById("vehicle-code-display").value = code;
+                    showSection("section-register");
+                }
+            } catch (error) {
+                alert("❌ Error al procesar el código: " + error.message);
+                updateCameraStatus("❌ Error: " + error.message, "error");
+                reInitQRScanner();
+            }
+        }
+        
+        async function registerVehicle() {
+            const name = document.getElementById("vehicle-name").value.trim();
+            const origen = document.getElementById("vehicle-origen").value.trim();
+            const destino = document.getElementById("vehicle-destino").value.trim();
+            const respOrigen = document.getElementById("vehicle-resp-origen").value.trim();
+            const respDestino = document.getElementById("vehicle-resp-destino").value.trim();
+            const nivel = parseFloat(document.getElementById("vehicle-nivel").value) || null;
+            const km = parseFloat(document.getElementById("vehicle-km").value) || null;
+            const obs = document.getElementById("vehicle-observaciones").value.trim();
+            
+            if (!name) {
+                alert("❌ Por favor ingresa el nombre del vehículo (placa, marca, modelo, etc)");
+                return;
+            }
+            
+            try {
+                const payload = {
+                    code: currentVehicleCode,
+                    name: name,
+                    origen: origen || null,
+                    destino: destino || null,
+                    responsable_origen: respOrigen || null,
+                    responsable_destino: respDestino || null,
+                    nivel_gasolina: nivel,
+                    kilometraje: km,
+                    observaciones: obs || null
+                };
+                const response = await fetch("/api/register-vehicle", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentVehicleName = name;
+                    currentVehicleOrigen = origen || '';
+                    currentVehicleDestino = destino || '';
+                    currentVehicleRespOrigen = respOrigen || '';
+                    currentVehicleRespDestino = respDestino || '';
+                    currentVehicleNivel = nivel || '';
+                    currentVehicleKm = km || '';
+                    currentVehicleObs = obs || '';
+                    showSection("section-location");
+                    updateVehicleInfo();
+                    captureLocation();
+                } else {
+                    alert("❌ Error: " + data.error);
+                }
+            } catch (error) {
+                alert("❌ Error al registrar: " + error.message);
+            }
+        }
+        
+        async function updateExistingVehicle() {
+            // Obtener valores del formulario de edición
+            const origen = document.getElementById("edit-vehicle-origen").value.trim();
+            const destino = document.getElementById("edit-vehicle-destino").value.trim();
+            const respOrigen = document.getElementById("edit-vehicle-resp-origen").value.trim();
+            const respDestino = document.getElementById("edit-vehicle-resp-destino").value.trim();
+            const nivel = parseFloat(document.getElementById("edit-vehicle-nivel").value) || null;
+            const km = parseFloat(document.getElementById("edit-vehicle-km").value) || null;
+            const obs = document.getElementById("edit-vehicle-observaciones").value.trim();
+            
+            try {
+                // El nombre no cambia; actualizar solo campos adicionales
+                const payload = {
+                    code: currentVehicleCode,
+                    name: currentVehicleName,  // no editable, se mantiene igual
+                    origen: origen || null,
+                    destino: destino || null,
+                    responsable_origen: respOrigen || null,
+                    responsable_destino: respDestino || null,
+                    nivel_gasolina: nivel,
+                    kilometraje: km,
+                    observaciones: obs || null
+                };
+                
+                const response = await fetch(`/api/update-vehicle/${encodeURIComponent(currentVehicleCode)}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Actualizar variables globales con los nuevos valores
+                    currentVehicleOrigen = origen || '';
+                    currentVehicleDestino = destino || '';
+                    currentVehicleRespOrigen = respOrigen || '';
+                    currentVehicleRespDestino = respDestino || '';
+                    currentVehicleNivel = nivel || '';
+                    currentVehicleKm = km || '';
+                    currentVehicleObs = obs || '';
+                    // Ir a capturar ubicación
+                    showSection("section-location");
+                    updateVehicleInfo();
+                    captureLocation();
+                } else {
+                    alert("❌ Error al actualizar: " + data.error);
+                }
+            } catch (error) {
+                alert("❌ Error al actualizar: " + error.message);
+            }
+        }
+        
+        function updateVehicleInfo() {
+            let html = `<strong>🚗 ${currentVehicleName}</strong><br><small>Código: ${currentVehicleCode}</small>`;
+            if (currentVehicleOrigen) html += `<br>Origen: ${currentVehicleOrigen}`;
+            if (currentVehicleDestino) html += `<br>Destino: ${currentVehicleDestino}`;
+            if (currentVehicleRespOrigen) html += `<br>Resp. Orig.: ${currentVehicleRespOrigen}`;
+            if (currentVehicleRespDestino) html += `<br>Resp. Dest.: ${currentVehicleRespDestino}`;
+            if (currentVehicleNivel) html += `<br>Nivel gas: ${currentVehicleNivel}`;
+            if (currentVehicleKm) html += `<br>Kilometraje: ${currentVehicleKm}`;
+            if (currentVehicleObs) html += `<br>Obs: ${currentVehicleObs}`;
+            document.getElementById("vehicle-info").innerHTML = html;
+        }
+        
+        async function captureLocation() {
+            if (!navigator.geolocation) {
+                showLocationStatus("error", "❌ La geolocalización no está disponible en tu navegador");
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    currentLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    
+                    showLocationStatus("success", "✅ Ubicación capturada correctamente");
+                    displayLocationOnMap();
+                    document.getElementById("location-coords").innerHTML = `
+                        <strong>📍 Coordenadas:</strong><br>
+                        Latitud: ${currentLocation.latitude.toFixed(6)}<br>
+                        Longitud: ${currentLocation.longitude.toFixed(6)}
+                    `;
+                    document.getElementById("location-coords").style.display = "block";
+                },
+                function(error) {
+                    showLocationStatus("error", "❌ Error al obtener ubicación: " + error.message);
+                }
+            );
+        }
+        
+        function displayLocationOnMap() {
+            if (!currentMap) {
+                currentMap = L.map('map').setView(
+                    [currentLocation.latitude, currentLocation.longitude],
+                    16
+                );
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(currentMap);
+            } else {
+                currentMap.setView([currentLocation.latitude, currentLocation.longitude], 16);
+            }
+            
+            // Limpiar marcadores anteriores
+            currentMap.eachLayer(function(layer) {
+                if (layer instanceof L.Marker) {
+                    currentMap.removeLayer(layer);
+                }
+            });
+            
+            L.marker([currentLocation.latitude, currentLocation.longitude])
+                .addTo(currentMap)
+                .bindPopup("📍 Ubicación actual del vehículo")
+                .openPopup();
+        }
+        
+        function showLocationStatus(type, message) {
+            const statusDiv = document.getElementById("location-status");
+            statusDiv.className = "status status-" + type;
+            if (type === "loading") {
+                statusDiv.innerHTML = '<div class="loading-spinner"></div> ' + message;
+            } else {
+                statusDiv.innerHTML = message;
+            }
+        }
+        
+        async function confirmLocation() {
+            if (!currentLocation) {
+                alert("❌ Por favor obtén la ubicación primero");
+                return;
+            }
+            
+            showLocationStatus("loading", "⏳ Guardando ubicación...");
+            
+            try {
+                const response = await fetch(`/api/save-location/${currentVehicleCode}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(currentLocation)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSummary();
+                } else {
+                    showLocationStatus("error", "❌ Error: " + data.message);
+                }
+            } catch (error) {
+                showLocationStatus("error", "❌ Error al guardar: " + error.message);
+            }
+        }
+        
+        function showSummary() {
+            document.getElementById("summary-vehicle").textContent = currentVehicleName;
+            document.getElementById("summary-lat").textContent = currentLocation.latitude.toFixed(6);
+            document.getElementById("summary-lng").textContent = currentLocation.longitude.toFixed(6);
+            document.getElementById("summary-time").textContent = new Date().toLocaleString();
+            
+            showSection("section-confirm");
+            
+            // Mostrar mapa en resumen
+            setTimeout(() => {
+                if (!currentMapConfirm) {
+                    currentMapConfirm = L.map('map-confirm').setView(
+                        [currentLocation.latitude, currentLocation.longitude],
+                        15
+                    );
+                    
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(currentMapConfirm);
+                }
+                
+                currentMapConfirm.eachLayer(function(layer) {
+                    if (layer instanceof L.Marker) {
+                        currentMapConfirm.removeLayer(layer);
+                    }
+                });
+                
+                L.marker([currentLocation.latitude, currentLocation.longitude])
+                    .addTo(currentMapConfirm)
+                    .bindPopup("Ubicación guardada");
+                
+                document.getElementById("map-confirm").style.display = "block";
+            }, 100);
+        }
+        
+        function viewDashboard() {
+            window.location.href = `/dashboard/${currentVehicleCode}`;
+        }
+        
+        function goBackToScan() {
+            console.log("🔄 Volviendo al scanner...");
+            
+            // Limpiar todas las variables
+            currentVehicleCode = null;
+            currentVehicleName = null;
+            currentVehicleOrigen = null;
+            currentVehicleDestino = null;
+            currentVehicleRespOrigen = null;
+            currentVehicleRespDestino = null;
+            currentVehicleNivel = null;
+            currentVehicleKm = null;
+            currentVehicleObs = null;
+            currentLocation = null;
+            
+            // Limpiar TODOS los inputs
+            const allInputs = [
+                // Registro
+                "vehicle-name", "vehicle-origen", "vehicle-destino", 
+                "vehicle-resp-origen", "vehicle-resp-destino", 
+                "vehicle-nivel", "vehicle-km", "vehicle-observaciones",
+                "vehicle-code-display",
+                // Edición
+                "edit-vehicle-name", "edit-vehicle-origen", "edit-vehicle-destino",
+                "edit-vehicle-resp-origen", "edit-vehicle-resp-destino", 
+                "edit-vehicle-nivel", "edit-vehicle-km", "edit-vehicle-observaciones",
+                // Manual
+                "manual-code"
+            ];
+            
+            allInputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        el.value = '';
+                    }
+                }
+            });
+            
+            // Limpiar UI
+            const infoBox = document.getElementById("vehicle-info");
+            if (infoBox) infoBox.innerHTML = '';
+            
+            const coordsBox = document.getElementById("location-coords");
+            if (coordsBox) { 
+                coordsBox.innerHTML = ''; 
+                coordsBox.style.display = 'none'; 
+            }
+            
+            // Destruir mapas
+            if (currentMap) { 
+                try { 
+                    currentMap.remove(); 
+                    currentMap = null; 
+                } catch(e){} 
+            }
+            if (currentMapConfirm) { 
+                try { 
+                    currentMapConfirm.remove(); 
+                    currentMapConfirm = null; 
+                } catch(e){} 
+            }
+            
+            showSection("section-scan");
+            reInitQRScanner();
+        }
+        
+        function reInitQRScanner() {
+            if (qrScanner && scannerInitialized) {
+                qrScanner.stop().catch(err => console.log("Error stopping scanner", err));
+            }
+            updateCameraStatus("⏳ Reiniciando cámara...", "info");
+            setTimeout(() => {
+                initQRScanner();
+            }, 500);
+        }
+        
+        function showSection(sectionId) {
+            document.querySelectorAll(".section").forEach(el => {
+                el.classList.remove("active");
+            });
+            document.getElementById(sectionId).classList.add("active");
+        }
+        
+        // Inicializar cuando carga la página
+        window.addEventListener("load", function() {
+            console.log("Inicializando aplicación...");
+            initQRScanner();
+            
+            // Check si hay parámetro de código en URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const codigoParam = urlParams.get('codigo');
+            if (codigoParam) {
+                console.log("Código encontrado en URL:", codigoParam);
+                processQRCode(codigoParam);
+            }
+        });
+        
+        // Limpiar recursos si se cierra la página
+        window.addEventListener("beforeunload", function() {
+            if (qrScanner && scannerInitialized) {
+                qrScanner.stop().catch(err => console.log("Error closing scanner:", err));
+            }
+            if (currentMap) {
+                currentMap.remove();
+            }
+            if (currentMapConfirm) {
+                currentMapConfirm.remove();
+            }
+        });
+    </script>
+</body>
+</html>

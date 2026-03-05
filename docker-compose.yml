@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: qr_tracker_db
+    restart: always
+    environment:
+      POSTGRES_USER: qr_user
+      POSTGRES_PASSWORD: qr_pass
+      POSTGRES_DB: qr_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: qr_tracker_app
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DB_USER: qr_user
+      DB_PASSWORD: qr_pass
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: qr_db
+      # variables de seguridad (cambie en producción)
+      ADMIN_USER: admin
+      ADMIN_PASS: secret
+      SESSION_SECRET: supersecret
+      ALLOWED_ORIGINS: http://localhost:8001
+    ports:
+      - "8001:8000"
+    volumes:
+      - .:/app
+
+volumes:
+  pgdata:
