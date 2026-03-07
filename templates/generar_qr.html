@@ -300,14 +300,7 @@
             </ol>
         </div>
         
-        <div class="input-group">
-            <label for="codigo-manual">O genera un código manualmente (Código único):</label>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="codigo-manual" placeholder="Ej: veh_a1b2c3d4" style="flex: 1;">
-                <button class="btn-primary" onclick="generarQRManual()" style="flex: 0 0 auto; width: auto;">Generar</button>
-            </div>
-        </div>
-        
+       
         <div class="button-group">
             <button class="btn-primary" onclick="generarQRAutomatico()">✨ Generar QR Automático</button>
             <button class="btn-secondary" onclick="window.location.href='/'">← Volver a Escanear</button>
@@ -322,6 +315,29 @@
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="codigo-historial" placeholder="Ej: veh_a1b2c3d4" style="flex: 1;">
                     <button class="btn-primary" onclick="buscarHistorial()" style="flex: 0 0 auto; width: auto; padding: 12px 20px;">Ver Historial</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel de Filtros para Exportar Excel -->
+        <div id="filtros-panel-qr" class="section" style="display: none; background: #fffdf7; border-color: #ffc107;">
+            <h3 style="color: #333; margin-bottom: 15px;"> Filtros y Exportación</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
+                <div>
+                    <label style="font-weight: 600; color: #333; margin-bottom: 5px; display: block; font-size: 14px;">Desde:</label>
+                    <input type="date" id="filtro-fecha-desde-qr" placeholder="Fecha desde" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #333; margin-bottom: 5px; display: block; font-size: 14px;">Hasta:</label>
+                    <input type="date" id="filtro-fecha-hasta-qr" placeholder="Fecha hasta" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #333; margin-bottom: 5px; display: block; font-size: 14px;">:</label>
+                    <input type="text" id="filtro-placa-qr" placeholder="Placa" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                </div>
+                <div>
+                    <button class="btn-primary" onclick="descargarExcelQR()" style="padding: 10px 20px; margin-right: 5px;">📥 Descargar</button>
+                    <button onclick="resetFiltrosQR()" style="padding: 10px 15px; background: #999; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">🔄</button>
                 </div>
             </div>
         </div>
@@ -342,6 +358,13 @@
                         <th style="padding: 12px; text-align: left;">Latitud</th>
                         <th style="padding: 12px; text-align: left;">Longitud</th>
                         <th style="padding: 12px; text-align: left;">Dirección</th>
+                        <th style="padding: 12px; text-align: left;">Origen</th>
+                        <th style="padding: 12px; text-align: left;">Destino</th>
+                        <th style="padding: 12px; text-align: left;">Responsable Origen</th>
+                        <th style="padding: 12px; text-align: left;">Responsable Destino</th>
+                        <th style="padding: 12px; text-align: left;">Nivel Gasolina</th>
+                        <th style="padding: 12px; text-align: left;">Kilometraje</th>
+                        <th style="padding: 12px; text-align: left;">Observaciones</th>
                     </tr>
                 </thead>
                 <tbody id="historial-tbody">
@@ -353,7 +376,7 @@
         <div id="status-message" class="status-message"></div>
         
         <div id="qr-result" class="qr-container">
-            <h2>✅ ¡Código QR Generado!</h2>
+            <h2> ¡Código QR Generado!</h2>
             
             <p>Código único del vehículo:</p>
             <div class="codigo-display" id="codigo-qr-display"></div>
@@ -361,11 +384,11 @@
             <p>Imagen del código QR:</p>
             <img id="qr-image" src="" alt="Código QR">
             
-            <button class="copy-button" onclick="copiarAlPortapapeles()">📋 Copiar Código</button>
-            <button class="download-button" onclick="descargarQR()">⬇️ Descargar Imagen</button>
+            <button class="copy-button" onclick="copiarAlPortapapeles()"> Copiar Código</button>
+            <button class="download-button" onclick="descargarQR()">⬇ Descargar Imagen</button>
             
             <div class="info-box">
-                💡 Puedes:
+                 Puedes:
                 <ul style="margin-top: 10px; margin-left: 20px;">
                     <li>Imprimir la imagen</li>
                     <li>Capturar screenshot en tu celular</li>
@@ -374,8 +397,8 @@
                 </ul>
             </div>
             
-            <button class="redirect-button" onclick="generarOtro()">🔄 Generar Otro QR</button>
-            <button class="redirect-button" onclick="irAEscanear()">🔍 Ir a Escanear</button>
+            <button class="redirect-button" onclick="generarOtro()"> Generar Otro QR</button>
+            <button class="redirect-button" onclick="irAEscanear()"> Ir a Escanear</button>
         </div>
     </div>
 
@@ -398,7 +421,9 @@
                 }
 
                 try {
-                    const response = await fetch(url);
+                    const response = await fetch(url, {
+                        credentials: "include"
+                    });
                     if (!response.ok) throw new Error("No encontrado");
 
                     const data = await response.json();
@@ -406,6 +431,10 @@
                     document.getElementById("historial-resultado").style.display = "block";
                     document.getElementById("historial-titulo").textContent = `📊 ${data.vehicle_name}`;
                     document.getElementById("historial-info").textContent = `Total de registros: ${data.total_registros}`;
+                    
+                    // Mostrar panel de filtros y cargar la placa
+                    document.getElementById("filtros-panel-qr").style.display = "block";
+                    document.getElementById("filtro-placa-qr").value = data.vehicle_code || "";
                     
                     if (data.total_registros === 0) {
                         document.getElementById("historial-tabla").style.display = "none";
@@ -424,13 +453,13 @@
                             <td style="padding: 12px;"><code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px;">${loc.latitude.toFixed(6)}</code></td>
                             <td style="padding: 12px;"><code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px;">${loc.longitude.toFixed(6)}</code></td>
                             <td style="padding: 12px;" class="address-cell">Cargando...</td>
-                            <td style="padding: 12px;">${data.origen || ''}</td>
-                            <td style="padding: 12px;">${data.destino || ''}</td>
-                            <td style="padding: 12px;">${data.responsable_origen || ''}</td>
-                            <td style="padding: 12px;">${data.responsable_destino || ''}</td>
-                            <td style="padding: 12px;">${data.nivel_gasolina != null ? data.nivel_gasolina : ''}</td>
-                            <td style="padding: 12px;">${data.kilometraje != null ? data.kilometraje : ''}</td>
-                            <td style="padding: 12px;">${data.observaciones || ''}</td>
+                            <td style="padding: 12px;">${loc.origen || ''}</td>
+                            <td style="padding: 12px;">${loc.destino || ''}</td>
+                            <td style="padding: 12px;">${loc.responsable_origen || ''}</td>
+                            <td style="padding: 12px;">${loc.responsable_destino || ''}</td>
+                            <td style="padding: 12px;">${loc.nivel_gasolina != null ? loc.nivel_gasolina : ''}</td>
+                            <td style="padding: 12px;">${loc.kilometraje != null ? loc.kilometraje : ''}</td>
+                            <td style="padding: 12px;">${loc.observaciones || ''}</td>
                         `;
                         tbody.appendChild(row);
                         getAddress(loc.latitude, loc.longitude).then(addr => {
@@ -486,7 +515,8 @@
             try {
                 const response = await fetch("/api/generar-qr", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" }
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include"
                 });
                 
                 if (!response.ok) {
@@ -554,6 +584,70 @@
             }
             window.location.href = "/?codigo=" + window.generatedQR.codigo_qr;
         }
+        
+        // 🔹 DESCARGAR EXCEL (QR Page)
+        function descargarExcelQR() {
+            const fechaDesde = document.getElementById("filtro-fecha-desde-qr").value;
+            const fechaHasta = document.getElementById("filtro-fecha-hasta-qr").value;
+            const placa = document.getElementById("filtro-placa-qr").value;
+            
+            if (!placa) {
+                alert("⚠️ Por favor busca un vehículo primero");
+                return;
+            }
+            
+            // Construir parámetros
+            const params = new URLSearchParams();
+            if (fechaDesde) params.append("date_from", fechaDesde);
+            if (fechaHasta) params.append("date_to", fechaHasta);
+            if (placa) params.append("vehicle_code", placa);
+            
+            // Mostrar loader
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = "⏳ Generando...";
+            btn.disabled = true;
+            
+            // Descargar archivo
+            fetch(`/api/export-excel?${params.toString()}`, {
+                credentials: "include"
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Crear link de descarga
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `Reporte_${placa}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    // Restaurar botón
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                    alert("✅ Archivo descargado exitosamente");
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("❌ Error al descargar: " + error.message);
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                });
+        }
+        
+        // 🔹 RESETEAR FILTROS (QR Page)
+        function resetFiltrosQR() {
+            document.getElementById("filtro-fecha-desde-qr").value = "";
+            document.getElementById("filtro-fecha-hasta-qr").value = "";
+        }
+        
     </script>
 </body>
 </html>

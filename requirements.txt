@@ -9,3 +9,6 @@ pillow
 starlette
 itsdangerous
 python-multipart
+openpyxl
+pandas
+requests

@@ -258,12 +258,87 @@
             color: #999;
             display: none;
         }
-        
-        @media (max-width: 768px) {
-            .location-info {
-                grid-template-columns: 1fr;
+            
+            .filtros-section {
+                background: #f0f0f0;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 15px 0;
+                display: none;
             }
             
+            .filtros-section.active {
+                display: block;
+            }
+            
+            .filtros-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr auto;
+                gap: 12px;
+                align-items: end;
+            }
+            
+            .filtro-input {
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .filtro-input label {
+                font-weight: 600;
+                color: #333;
+                margin-bottom: 5px;
+                font-size: 14px;
+            }
+            
+            .filtro-input input,
+            .filtro-input select {
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                font-size: 14px;
+                font-family: Arial, sans-serif;
+            }
+            
+            .filtro-btn {
+                background: #667eea;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: all 0.3s;
+            }
+            
+            .filtro-btn:hover {
+                background: #5568d3;
+                transform: translateY(-2px);
+            }
+            
+            .filtro-btn-reset {
+                background: #999;
+                color: white;
+                padding: 10px 15px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: all 0.3s;
+                margin-left: 5px;
+            }
+            
+            .filtro-btn-reset:hover {
+                background: #777;
+            }
+            
+            @media (max-width: 768px) {
+                .filtros-grid {
+                    grid-template-columns: 1fr;
+                }
+                .filtro-btn, .filtro-btn-reset {
+                    width: 100%;
+                }
+            }
             .header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -277,14 +352,14 @@
             .action-buttons {
                 flex-direction: column;
             }
-        }
+        
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <div>
-                <h1>🚗 {{ vehicle.name }}</h1>
+                <h1> {{ vehicle.name }}</h1>
             </div>
             <span class="vehicle-badge">Código: {{ vehicle.code }}</span>
         </div>
@@ -292,7 +367,7 @@
         {% if last_location and last_location.latitude and last_location.longitude %}
         
         <div class="info-section">
-            <h2>📍 Última Ubicación Registrada</h2>
+            <h2> Última Ubicación Registrada</h2>
             
             <div class="location-info">
                 <div class="location-item">
@@ -317,6 +392,26 @@
         <div id="map"></div>
         
         <button class="historial-btn" id="historial-toggle-btn" onclick="loadHistorial()">📊 Ver Historial</button>
+        
+        <!-- Panel de Filtros -->
+        <div id="filtros-panel" class="filtros-section">
+            <h3>🔍 Filtros de Búsqueda</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Los filtros de fecha son opcionales. Deja en blanco para descargar todo.</p>
+            <div class="filtros-grid">
+                <div class="filtro-input">
+                    <label>Desde:</label>
+                    <input type="date" id="filtro-fecha-desde" placeholder="Fecha desde">
+                </div>
+                <div class="filtro-input">
+                    <label>Hasta:</label>
+                    <input type="date" id="filtro-fecha-hasta" placeholder="Fecha hasta">
+                </div>
+                <div>
+                    <button class="filtro-btn" onclick="descargarExcel()">📥 Descargar Excel</button>
+                    <button class="filtro-btn-reset" onclick="resetFiltros()">🔄 Limpiar</button>
+                </div>
+            </div>
+        </div>
         
         <div id="historial-section" class="historial-section">
             <h3>📋 Historial Completo de Ubicaciones</h3>
@@ -378,7 +473,8 @@
                             vehicle_code: vehicleCode,
                             latitude: lastLat,
                             longitude: lastLng
-                        })
+                        }),
+                        credentials: "include"
                     });
                     
                     const data = await response.json();
@@ -426,7 +522,9 @@
             function loadHistorial() {
                 document.getElementById("historial-toggle-btn").textContent = "⏳ Cargando...";
                 
-                fetch(`/api/historial/${historialVehicle}`)
+                fetch(`/api/historial/${historialVehicle}`, {
+                    credentials: "include"
+                })
                     .then(res => res.json())
                     .then(data => {
                         historialData = data;
@@ -441,6 +539,22 @@
             function mostrarHistorial() {
                 const section = document.getElementById("historial-section");
                 section.classList.toggle("active");
+                
+                // Validar que historialData existe
+                if (!historialData || !historialData.locations || !Array.isArray(historialData.locations)) {
+                    console.error("Error: historialData o historialData.locations no existen", historialData);
+                    alert("Error al procesar los datos del historial");
+                    section.classList.remove("active");
+                    return;
+                }
+                
+                // Mostrar u ocultar panel de filtros
+                const filtrosPanel = document.getElementById("filtros-panel");
+                if (section.classList.contains("active")) {
+                    filtrosPanel.classList.add("active");
+                } else {
+                    filtrosPanel.classList.remove("active");
+                }
                 
                 if (!section.classList.contains("active")) {
                     document.getElementById("historial-toggle-btn").textContent = "📊 Ver Historial";
@@ -470,13 +584,13 @@
                         <td><span class="coordinates">${loc.latitude.toFixed(6)}</span></td>
                         <td><span class="coordinates">${loc.longitude.toFixed(6)}</span></td>
                         <td class="address-cell">Cargando...</td>
-                        <td>${historialData.origen || ''}</td>
-                        <td>${historialData.destino || ''}</td>
-                        <td>${historialData.responsable_origen || ''}</td>
-                        <td>${historialData.responsable_destino || ''}</td>
-                        <td>${historialData.nivel_gasolina != null ? historialData.nivel_gasolina : ''}</td>
-                        <td>${historialData.kilometraje != null ? historialData.kilometraje : ''}</td>
-                        <td>${historialData.observaciones || ''}</td>
+                        <td>${loc.origen || ''}</td>
+                        <td>${loc.destino || ''}</td>
+                        <td>${loc.responsable_origen || ''}</td>
+                        <td>${loc.responsable_destino || ''}</td>
+                        <td>${loc.nivel_gasolina != null ? loc.nivel_gasolina : ''}</td>
+                        <td>${loc.kilometraje != null ? loc.kilometraje : ''}</td>
+                        <td>${loc.observaciones || ''}</td>
                     `;
                     tbody.appendChild(row);
                     // pedir dirección en segundo plano
@@ -515,6 +629,12 @@
             }
 
             function mostrarMapaHistorial() {
+                // Validar que historialData existe
+                if (!historialData || !historialData.locations) {
+                    console.error("Error: historialData.locations no existen", historialData);
+                    return;
+                }
+                
                 if (historialMap) {
                     historialMap.remove();
                     historialMap = null;
@@ -543,6 +663,68 @@
                         ${loc.fecha_formateada}
                     `);
                 });
+            }
+            
+            // 🔹 DESCARGAR EXCEL CON FILTROS
+            function descargarExcel() {
+                const fechaDesde = document.getElementById("filtro-fecha-desde").value;
+                const fechaHasta = document.getElementById("filtro-fecha-hasta").value;
+                const placa = "{{ vehicle.code }}";
+                const vehiculeName = "{{ vehicle.name }}";
+                
+                // Construir parámetros
+                const params = new URLSearchParams();
+                if (fechaDesde) params.append("date_from", fechaDesde);
+                if (fechaHasta) params.append("date_to", fechaHasta);
+                params.append("vehicle_code", placa);
+                
+                // Mostrar loader
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = "⏳ Generando...";
+                btn.disabled = true;
+                
+                // Descargar archivo
+                fetch(`/api/export-excel?${params.toString()}`, {
+                    credentials: "include"
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 404) {
+                                throw new Error("No hay registros en las fechas seleccionadas");
+                            }
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        // Crear link de descarga
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `Reporte_${placa}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        // Restaurar botón
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        alert("✅ Archivo descargado exitosamente");
+                    })
+                    .catch(error => {
+                        console.error("Error:", error);
+                        alert("❌ Error al descargar: " + error.message);
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    });
+            }
+            
+            // 🔹 RESETEAR FILTROS
+            function resetFiltros() {
+                document.getElementById("filtro-fecha-desde").value = "";
+                document.getElementById("filtro-fecha-hasta").value = "";
             }
             
             // Inicializar mapa cuando carga la página

@@ -104,10 +104,10 @@ docker-compose up
 ## 💾 Archivos Generados
 
 Después de cada escaneo se guarda:
-- 📌 **Ubicación GPS** (Latitud, Longitud)
-- 🕒 **Fecha y Hora**
-- 🚗 **Nombre del Vehículo**
-- 📊 **Histórico en Base de Datos**
+-  **Ubicación GPS** (Latitud, Longitud)
+-  **Fecha y Hora**
+-  **Nombre del Vehículo**
+-  **Histórico en Base de Datos**
 
 ---
 

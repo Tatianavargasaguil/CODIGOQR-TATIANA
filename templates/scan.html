@@ -287,7 +287,7 @@
             <p>Apunta tu cámara al código QR pegado en el vehículo</p>
             
             <div class="info-box">
-                <p>💡 <strong>¿No tienes código QR?</strong> <a href="/generar-qr" style="color: #667eea; font-weight: bold; text-decoration: none;">Crea uno aquí →</a></p>
+                <p> <strong>¿No tienes código QR?</strong> <a href="/generar-qr" style="color: #667eea; font-weight: bold; text-decoration: none;">Crea uno aquí →</a></p>
             </div>
             
             <!-- Indicador de permisos de cámara -->
@@ -344,7 +344,13 @@
             <!-- Entrada manual con mejor UX -->
             <div style="margin-top: 20px; padding: 15px; background: #f0f4ff; border-radius: 8px; border: 2px dashed #667eea;">
                 <p style="color: #666; margin-bottom: 10px; font-size: 14px;">
-                    🔧 Si el scanner no funciona, ingresa el código manualmente:
+                    🔧 Si el scanner no funciona, intenta esto:
+                </p>
+                <button onclick="requestCameraPermissionExplicit()" style="width: 100%; padding: 12px; background: #48bb78; color: white; border: none; border-radius: 6px; font-weight: bold; margin-bottom: 12px; cursor: pointer; font-size: 16px;">
+                    🎥 Solicitar Permiso de Cámara
+                </button>
+                <p style="color: #666; margin-bottom: 10px; font-size: 14px;">
+                    O ingresa el código manualmente:
                 </p>
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="manual-code" placeholder="Ej: veh_a1b2c3d4" 
@@ -370,7 +376,7 @@
         
         <!-- SECCIÓN 2: Registrar nuevo vehículo -->
         <div id="section-register" class="section">
-            <h1>🚗 Registrar Nuevo Vehículo</h1>
+            <h1> Registrar Nuevo Vehículo</h1>
             <p>Este código QR aún no está registrado. Por favor completa los datos:</p>
             
             <div class="form-group">
@@ -401,11 +407,11 @@
             </div>
             <div class="form-group">
                 <label>Nivel de gasolina:</label>
-                <input type="number" step="0.1" id="vehicle-nivel" placeholder="Litros o %">
+                <input type="text" id="vehicle-nivel" placeholder="Litros o %">
             </div>
             <div class="form-group">
                 <label>Kilometraje:</label>
-                <input type="number" step="0.1" id="vehicle-km" placeholder="Km">
+                <input type="text" id="vehicle-km" placeholder="Km">
             </div>
             <div class="form-group">
                 <label>Observaciones:</label>
@@ -420,7 +426,7 @@
         
         <!-- SECCIÓN 2B: Editar datos de vehículo existente -->
         <div id="section-edit-vehicle" class="section">
-            <h1>🚗 Actualizar Datos del Vehículo</h1>
+            <h1> Actualizar Datos del Vehículo</h1>
             <p>Este vehículo ya está registrado. Actualiza los datos si es necesario:</p>
             
             <div class="form-group">
@@ -446,11 +452,11 @@
             </div>
             <div class="form-group">
                 <label>Nivel de gasolina:</label>
-                <input type="number" step="0.1" id="edit-vehicle-nivel" placeholder="Litros o %">
+                <input type="text" id="edit-vehicle-nivel" placeholder="Litros o %">
             </div>
             <div class="form-group">
                 <label>Kilometraje:</label>
-                <input type="number" step="0.1" id="edit-vehicle-km" placeholder="Km">
+                <input type="text" id="edit-vehicle-km" placeholder="Km">
             </div>
             <div class="form-group">
                 <label>Observaciones:</label>
@@ -549,45 +555,10 @@
         function initQRScanner() {
             try {
                 qrScanner = new Html5Qrcode("qr-reader");
+                updateCameraStatus("⏳ Inicializando cámara...", "info");
                 
-                // Obtener cámara disponible
-                Html5Qrcode.getCameras().then(devices => {
-                    if (devices && devices.length) {
-                        // preferir la cámara trasera / environment cuando esté disponible
-                        let backCam = devices.find(d => /back|rear|environment|trasera|rear camera|camera rear/i.test(d.label));
-                        let envCam = devices.find(d => /environment/i.test(d.label));
-                        // si no hay etiquetas, usar por defecto el último dispositivo (suele ser la trasera en móviles)
-                        const fallback = devices[devices.length - 1] || devices[0];
-                        const selected = backCam || envCam || fallback;
-                        const cameraId = selected.id;
-                        
-                        qrScanner.start(
-                            cameraId,
-                            {
-                                fps: 15,
-                                qrbox: { width: 250, height: 250 },
-                                aspectRatio: 1
-                            },
-                            onQRCodeScanned,
-                            onQRScanError
-                        ).then(() => {
-                            scannerInitialized = true;
-                            updateCameraStatus("✅ Cámara iniciada. Apunta el QR al marco verde.", "success");
-                        }).catch(err => {
-                            updateCameraStatus("❌ Error al acceder a cámara: " + err.message, "error");
-                            // ejecutar diagnóstico adicional para obtener error detallado en móviles
-                            runCameraDiagnostic(err).catch(()=>{});
-                            // intentar fallback: facingMode environment, luego video:true simple
-                            tryFallbackStarts().catch(() => {
-                                showManualFallback();
-                            });
-                        });
-                    } else {
-                        updateCameraStatus("❌ No se encontró cámara en el dispositivo", "error");
-                        showManualFallback();
-                    }
-                }).catch(err => {
-                    updateCameraStatus("❌ Error al detectar cámara: " + err.message, "error");
+                // Saltamos getCameras() que puede fallar; intentamos directamente con facingMode
+                trySimpleCameraStart().catch(() => {
                     showManualFallback();
                 });
             } catch (error) {
@@ -597,51 +568,117 @@
             }
         }
 
-        async function tryFallbackStarts() {
-            const options = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1 };
-            const debugDiv = document.getElementById('camera-debug');
+        // Detectar si es dispositivo móvil
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
 
-            // 1) intentar facingMode environment
-            try {
-                updateCameraStatus('⏳ Intentando cámara trasera (facingMode: environment)...', 'info');
-                await qrScanner.start({ facingMode: { exact: 'environment' } }, options, onQRCodeScanned, onQRScanError);
-                scannerInitialized = true;
-                updateCameraStatus('✅ Cámara iniciada (facingMode: environment).', 'success');
-                return;
-            } catch (errEnv) {
-                console.warn('Fallback environment fallo:', errEnv);
-                if (debugDiv) { debugDiv.style.display='block'; debugDiv.textContent = 'Fallback: facingMode environment falló: ' + (errEnv.message||errEnv); }
+        async function trySimpleCameraStart() {
+            const options = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+            };
+
+            const isMobile = isMobileDevice();
+
+            if (isMobile) {
+                // En móbiles: PRIORIZAMOS CÁMARA TRASERA
+                
+                // 1) Intenta con cámara trasera - constraints simples
+                try {
+                    updateCameraStatus("⏳ Iniciando cámara trasera...", "info");
+                    await qrScanner.start('environment', options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateCameraStatus("✅ Cámara trasera iniciada. Apunta el QR al marco verde.", "success");
+                    return;
+                } catch (err) {
+                    console.warn("Cámara trasera falló:", err);
+                }
+
+                // 2) Intenta con constraint facingMode más simple
+                try {
+                    updateCameraStatus("⏳ Intentando con facingMode: environment...", "info");
+                    await qrScanner.start({ facingMode: 'environment' }, options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateCameraStatus("✅ Cámara trasera iniciada. Apunta el QR al marco verde.", "success");
+                    return;
+                } catch (err) {
+                    console.warn("FacingMode environment falló:", err);
+                }
+
+                // 3) Intenta cámara frontal como fallback
+                try {
+                    updateCameraStatus("⏳ Intentando cámara frontal...", "info");
+                    await qrScanner.start('user', options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateCameraStatus("✅ Cámara frontal iniciada. Apunta el QR al marco verde.", "success");
+                    return;
+                } catch (err) {
+                    console.warn("Cámara frontal falló:", err);
+                }
+
+                // 4) Intenta sin constraint - video simple
+                try {
+                    updateCameraStatus("⏳ Intentando video simple...", "info");
+                    await qrScanner.start({ video: true }, options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateCameraStatus("✅ Cámara iniciada. Apunta el QR al marco verde.", "success");
+                    return;
+                } catch (err) {
+                    console.warn("Video simple falló:", err);
+                }
+            } else {
+                // En desktop: mantener orden original
+                
+                // 1) Intenta cámara frontal
+                try {
+                    updateCameraStatus("⏳ Iniciando cámara...", "info");
+                    await qrScanner.start('user', options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateCameraStatus("✅ Cámara iniciada. Apunta el QR al marco verde.", "success");
+                    return;
+                } catch (err) {
+                    console.warn("Fallback 1 (user) falló:", err);
+                }
+
+                // 2) Intenta cámara trasera
+                try {
+                    updateCameraStatus("⏳ Intentando cámara trasera...", "info");
+                    await qrScanner.start('environment', options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateCameraStatus("✅ Cámara trasera iniciada. Apunta el QR al marco verde.", "success");
+                    return;
+                } catch (err) {
+                    console.warn("Fallback 2 (environment) falló:", err);
+                }
             }
 
-            // 2) intentar facingMode user
+            // 5) Intenta sin especificar facingMode
             try {
-                updateCameraStatus('⏳ Intentando cámara frontal (facingMode: user)...', 'info');
-                await qrScanner.start({ facingMode: 'user' }, options, onQRCodeScanned, onQRScanError);
-                scannerInitialized = true;
-                updateCameraStatus('✅ Cámara iniciada (frontal).', 'success');
-                return;
-            } catch (errUser) {
-                console.warn('Fallback user fallo:', errUser);
-                if (debugDiv) { debugDiv.style.display='block'; debugDiv.textContent += ' | facingMode user falló: ' + (errUser.message||errUser); }
+                updateCameraStatus("⏳ Intentando cámara por defecto del sistema...", "info");
+                const devices = await Html5Qrcode.getCameras().catch(() => []);
+                if (devices && devices.length > 0) {
+                    await qrScanner.start(devices[0].id, options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateCameraStatus("✅ Cámara iniciada. Apunta el QR al marco verde.", "success");
+                    return;
+                }
+            } catch (err) {
+                console.warn("Fallback 3 (getCameras) falló:", err);
             }
 
-            // 3) intentar getUserMedia simple como diagnóstico adicional
-            try {
-                updateCameraStatus('⏳ Intentando getUserMedia simple...', 'info');
-                await runCameraDiagnostic();
-                // no iniciamos html5-qrcode con stream aquí; el diagnóstico ya mostró el error o éxito
-            } catch (errGM) {
-                console.warn('getUserMedia diagnóstico fallo:', errGM);
-            }
-
-            throw new Error('No se pudo iniciar la cámara con los fallbacks');
+            // Si llegamos aquí, mostrar error DETALLADO
+            updateCameraStatus("❌ No se puede acceder a la cámara. ¿Le diste permiso al navegador? Usa la entrada manual de abajo.", "error");
+            throw new Error("No se pudo iniciar la cámara");
         }
         
         function updateCameraStatus(message, type = "info") {
             const statusDiv = document.getElementById("camera-status");
-            statusDiv.innerHTML = message;
-            statusDiv.style.color = type === "error" ? "#cb2431" : type === "success" ? "#22863a" : "#667eea";
-            statusDiv.style.fontWeight = type === "error" || type === "success" ? "bold" : "normal";
+            if (statusDiv) {
+                statusDiv.innerHTML = message;
+                statusDiv.style.color = type === "error" ? "#cb2431" : type === "success" ? "#22863a" : "#667eea";
+                statusDiv.style.fontWeight = type === "error" || type === "success" ? "bold" : "normal";
+            }
         }
         
         function showManualFallback() {
@@ -649,36 +686,6 @@
             if (manualSection) {
                 manualSection.style.background = "#fff3cd";
                 manualSection.style.borderColor = "#ffc107";
-            }
-        }
-
-        async function runCameraDiagnostic(originalError) {
-            // Muestra error detallado del intento de getUserMedia
-            const debugDiv = document.getElementById('camera-debug');
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                debugDiv.style.display = 'block';
-                debugDiv.textContent = 'getUserMedia no está disponible en este navegador.';
-                return;
-            }
-
-            try {
-                // intenta obtener permiso sin constraints complejos para ver el error exacto
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                // si llega aquí, la cámara funciona; detener el stream inmediatamente
-                stream.getTracks().forEach(t => t.stop());
-                debugDiv.style.display = 'block';
-                debugDiv.style.color = '#1976d2';
-                debugDiv.textContent = 'Diagnóstico: getUserMedia OK (la cámara respondió).';
-            } catch (err) {
-                debugDiv.style.display = 'block';
-                debugDiv.style.color = '#cb2431';
-                const name = err.name || 'Error';
-                const msg = err.message || '';
-                debugDiv.textContent = `Diagnóstico: ${name} - ${msg}`;
-                // si hay un error original del html5-qrcode también lo mostramos
-                if (originalError && originalError.message) {
-                    debugDiv.textContent += ` | original: ${originalError.message}`;
-                }
             }
         }
         
@@ -702,6 +709,39 @@
         function onQRScanError(error) {
             // Silenciar errores de lectura normales
             // console.log("Leyendo QR...");
+        }
+        
+        async function requestCameraPermissionExplicit() {
+            try {
+                updateCameraStatus("⏳ Solicitando permiso de cámara...", "info");
+                // Solicita permiso explícitamente
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: {
+                        facingMode: { ideal: 'environment' }
+                    }
+                });
+                // Si llegamos aquí, tenemos permiso; detener el stream
+                stream.getTracks().forEach(track => track.stop());
+                updateCameraStatus("✅ Permiso concedido. Reiniciando cámara...", "success");
+                
+                // Reiniciar el scanner
+                if (qrScanner) {
+                    try {
+                        await qrScanner.stop();
+                    } catch (e) {}
+                }
+                scannerInitialized = false;
+                setTimeout(() => initQRScanner(), 1000);
+            } catch (err) {
+                if (err.name === 'NotAllowedError') {
+                    updateCameraStatus("❌ Permiso denegado. Por favor autoriza la cámara en tu navegador.", "error");
+                    alert("Debes permitir acceso a la cámara para escanear QR. Revisa la barra de direcciones arriba.");
+                } else if (err.name === 'NotFoundError') {
+                    updateCameraStatus("❌ No se encontró cámara en este dispositivo.", "error");
+                } else {
+                    updateCameraStatus("❌ Error: " + err.message, "error");
+                }
+            }
         }
         
         function processQRManual() {
@@ -800,7 +840,7 @@
             try {
                 updateCameraStatus("🔍 Verificando vehículo en base de datos...", "info");
                 
-                const response = await fetch(`/api/vehicle-qr/${encodeURIComponent(code)}`, { method: "POST" });
+                const response = await fetch(`/api/vehicle-qr/${encodeURIComponent(code)}`, { method: "POST", credentials: "include" });
                 let data;
                 
                 if (response.ok) {
@@ -855,8 +895,8 @@
             const destino = document.getElementById("vehicle-destino").value.trim();
             const respOrigen = document.getElementById("vehicle-resp-origen").value.trim();
             const respDestino = document.getElementById("vehicle-resp-destino").value.trim();
-            const nivel = parseFloat(document.getElementById("vehicle-nivel").value) || null;
-            const km = parseFloat(document.getElementById("vehicle-km").value) || null;
+            const nivel = document.getElementById("vehicle-nivel").value.trim();
+            const km = document.getElementById("vehicle-km").value.trim();
             const obs = document.getElementById("vehicle-observaciones").value.trim();
             
             if (!name) {
@@ -865,21 +905,16 @@
             }
             
             try {
+                // Endpoint solo requiere code y name
                 const payload = {
                     code: currentVehicleCode,
-                    name: name,
-                    origen: origen || null,
-                    destino: destino || null,
-                    responsable_origen: respOrigen || null,
-                    responsable_destino: respDestino || null,
-                    nivel_gasolina: nivel,
-                    kilometraje: km,
-                    observaciones: obs || null
+                    name: name
                 };
                 const response = await fetch("/api/register-vehicle", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    credentials: "include"
                 });
                 
                 const data = await response.json();
@@ -893,11 +928,24 @@
                     currentVehicleNivel = nivel || '';
                     currentVehicleKm = km || '';
                     currentVehicleObs = obs || '';
+                    
+                    // Pre-llenar los campos de edición para que cuando capture ubicación, se incluyan
+                    document.getElementById("edit-vehicle-name").value = currentVehicleName;
+                    document.getElementById("edit-vehicle-origen").value = currentVehicleOrigen;
+                    document.getElementById("edit-vehicle-destino").value = currentVehicleDestino;
+                    document.getElementById("edit-vehicle-resp-origen").value = currentVehicleRespOrigen;
+                    document.getElementById("edit-vehicle-resp-destino").value = currentVehicleRespDestino;
+                    document.getElementById("edit-vehicle-nivel").value = currentVehicleNivel;
+                    document.getElementById("edit-vehicle-km").value = currentVehicleKm;
+                    document.getElementById("edit-vehicle-observaciones").value = currentVehicleObs;
+                    
                     showSection("section-location");
                     updateVehicleInfo();
                     captureLocation();
                 } else {
-                    alert("❌ Error: " + data.error);
+                    const errorMsg = data.error || data.detail || "Error desconocido al registrar";
+                    alert("❌ Error: " + errorMsg);
+                    console.error("Error response:", data);
                 }
             } catch (error) {
                 alert("❌ Error al registrar: " + error.message);
@@ -931,7 +979,8 @@
                 const response = await fetch(`/api/update-vehicle/${encodeURIComponent(currentVehicleCode)}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    credentials: "include"
                 });
                 
                 const data = await response.json();
@@ -950,10 +999,13 @@
                     updateVehicleInfo();
                     captureLocation();
                 } else {
-                    alert("❌ Error al actualizar: " + data.error);
+                    const errorMsg = data.error || data.detail || "Error desconocido al actualizar";
+                    alert("❌ Error al actualizar: " + errorMsg);
+                    console.error("Error response:", data);
                 }
             } catch (error) {
-                alert("❌ Error al actualizar: " + error.message);
+                alert("❌ Error de conexión: " + (error.message || "Error desconocido"));
+                console.error("Fetch error:", error);
             }
         }
         
@@ -977,9 +1029,17 @@
             
             navigator.geolocation.getCurrentPosition(
                 function(position) {
+                    // Capturar datos del formulario en el objeto de ubicación
                     currentLocation = {
                         latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
+                        longitude: position.coords.longitude,
+                        origen: document.getElementById("edit-vehicle-origen").value.trim() || null,
+                        destino: document.getElementById("edit-vehicle-destino").value.trim() || null,
+                        responsable_origen: document.getElementById("edit-vehicle-resp-origen").value.trim() || null,
+                        responsable_destino: document.getElementById("edit-vehicle-resp-destino").value.trim() || null,
+                        nivel_gasolina: document.getElementById("edit-vehicle-nivel").value.trim() || null,
+                        kilometraje: document.getElementById("edit-vehicle-km").value.trim() || null,
+                        observaciones: document.getElementById("edit-vehicle-observaciones").value.trim() || null
                     };
                     
                     showLocationStatus("success", "✅ Ubicación capturada correctamente");
@@ -1046,7 +1106,8 @@
                 const response = await fetch(`/api/save-location/${currentVehicleCode}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(currentLocation)
+                    body: JSON.stringify(currentLocation),
+                    credentials: "include"
                 });
                 
                 const data = await response.json();

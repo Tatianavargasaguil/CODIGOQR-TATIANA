@@ -1,7 +1,9 @@
 import os
 import secrets
+import logging
+import tempfile
 from fastapi import FastAPI, Depends, Request, HTTPException, status, Form
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +14,7 @@ from .models import Vehicle, Location
 from .schemas import LocationCreate, VehicleCreate
 import uuid
 from dotenv import load_dotenv
+import pandas as pd
 
 # load environment variables from .env if it exists
 load_dotenv()
@@ -158,14 +161,7 @@ def get_or_create_vehicle(vehicle_code: str, db: Session = Depends(get_db), user
             "exists": True,
             "vehicle_code": vehicle.code,
             "vehicle_name": vehicle.name,
-            "vehicle_id": vehicle.id,
-            "origen": vehicle.origen,
-            "destino": vehicle.destino,
-            "responsable_origen": vehicle.responsable_origen,
-            "responsable_destino": vehicle.responsable_destino,
-            "nivel_gasolina": vehicle.nivel_gasolina,
-            "kilometraje": vehicle.kilometraje,
-            "observaciones": vehicle.observaciones
+            "vehicle_id": vehicle.id
         }
     else:
         return {
@@ -187,13 +183,6 @@ def register_vehicle(data: VehicleCreate, db: Session = Depends(get_db), user: s
     vehicle = Vehicle(
         code=data.code,
         name=data.name,
-        origen=data.origen,
-        destino=data.destino,
-        responsable_origen=data.responsable_origen,
-        responsable_destino=data.responsable_destino,
-        nivel_gasolina=data.nivel_gasolina,
-        kilometraje=data.kilometraje,
-        observaciones=data.observaciones,
     )
     db.add(vehicle)
     db.commit()
@@ -204,55 +193,29 @@ def register_vehicle(data: VehicleCreate, db: Session = Depends(get_db), user: s
         "vehicle_id": vehicle.id,
         "vehicle_code": vehicle.code,
         "vehicle_name": vehicle.name,
-        "origen": vehicle.origen,
-        "destino": vehicle.destino,
-        "responsable_origen": vehicle.responsable_origen,
-        "responsable_destino": vehicle.responsable_destino,
-        "nivel_gasolina": vehicle.nivel_gasolina,
-        "kilometraje": vehicle.kilometraje,
-        "observaciones": vehicle.observaciones,
     }
 
 
 # 🔹 ACTUALIZAR CAMPOS ADICIONALES DE VEHÍCULO EXISTENTE (protegido)
 @app.post("/api/update-vehicle/{vehicle_code}")
 def update_vehicle(vehicle_code: str, data: VehicleCreate, db: Session = Depends(get_db), user: str = Depends(login_required)):
-    """Actualiza los campos adicionales de un vehículo existente (origen, destino, responsables, etc)
-    Sin cambiar el código QR ni el nombre del vehículo"""
+    """Los datos de formulario ahora se guardan con cada ubicación, no con el vehículo"""
     vehicle = db.query(Vehicle).filter(Vehicle.code == vehicle_code).first()
     if not vehicle:
         return {"error": "Vehículo no encontrado"}
     
-    # Actualizar solo campos permitidos (no code ni name)
-    vehicle.origen = data.origen
-    vehicle.destino = data.destino
-    vehicle.responsable_origen = data.responsable_origen
-    vehicle.responsable_destino = data.responsable_destino
-    vehicle.nivel_gasolina = data.nivel_gasolina
-    vehicle.kilometraje = data.kilometraje
-    vehicle.observaciones = data.observaciones
-    
-    db.commit()
-    db.refresh(vehicle)
-    
+    # Solo retornar info del vehículo
     return {
         "success": True,
         "vehicle_code": vehicle.code,
         "vehicle_name": vehicle.name,
-        "origen": vehicle.origen,
-        "destino": vehicle.destino,
-        "responsable_origen": vehicle.responsable_origen,
-        "responsable_destino": vehicle.responsable_destino,
-        "nivel_gasolina": vehicle.nivel_gasolina,
-        "kilometraje": vehicle.kilometraje,
-        "observaciones": vehicle.observaciones,
     }
 
 
 # 🔹 GUARDAR UBICACIÓN CON CONFIRMACIÓN (protegido)
 @app.post("/api/save-location/{vehicle_code}")
 def save_location(vehicle_code: str, data: LocationCreate, db: Session = Depends(get_db), user: str = Depends(login_required)):
-    """Guarda la ubicación GPS del vehículo después de confirmación"""
+    """Guarda la ubicación GPS del vehículo con todos los datos del formulario"""
     vehicle = db.query(Vehicle).filter(Vehicle.code == vehicle_code).first()
     
     if not vehicle:
@@ -261,7 +224,14 @@ def save_location(vehicle_code: str, data: LocationCreate, db: Session = Depends
     location = Location(
         vehicle_id=vehicle.id,
         latitude=data.latitude,
-        longitude=data.longitude
+        longitude=data.longitude,
+        origen=data.origen,
+        destino=data.destino,
+        responsable_origen=data.responsable_origen,
+        responsable_destino=data.responsable_destino,
+        nivel_gasolina=data.nivel_gasolina,
+        kilometraje=data.kilometraje,
+        observaciones=data.observaciones,
     )
     
     db.add(location)
@@ -305,60 +275,6 @@ def get_last_location(vehicle_code: str, db: Session = Depends(get_db), user: st
     }
 
 
-# 🔹 OBTENER HISTORIAL COMPLETO DE UBICACIONES POR CÓDIGO
-@app.get("/api/historial/{vehicle_code}")
-def get_historial(vehicle_code: str, db: Session = Depends(get_db)):
-    """Obtiene el historial completo de ubicaciones de un vehículo usando su código"""
-    vehicle = db.query(Vehicle).filter(Vehicle.code == vehicle_code).first()
-    
-    if not vehicle:
-        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
-    
-    locations = (
-        db.query(Location)
-        .filter(Location.vehicle_id == vehicle.id)
-        .order_by(Location.created_at.desc())
-        .all()
-    )
-    
-    if not locations:
-        return {
-            "vehicle_code": vehicle_code,
-            "vehicle_name": vehicle.name,
-            "origen": vehicle.origen,
-            "destino": vehicle.destino,
-            "responsable_origen": vehicle.responsable_origen,
-            "responsable_destino": vehicle.responsable_destino,
-            "nivel_gasolina": vehicle.nivel_gasolina,
-            "kilometraje": vehicle.kilometraje,
-            "observaciones": vehicle.observaciones,
-            "total_registros": 0,
-            "locations": [],
-            "message": "No hay registros de ubicación"
-        }
-    
-    return {
-        "vehicle_code": vehicle_code,
-        "vehicle_name": vehicle.name,
-        "origen": vehicle.origen,
-        "destino": vehicle.destino,
-        "responsable_origen": vehicle.responsable_origen,
-        "responsable_destino": vehicle.responsable_destino,
-        "nivel_gasolina": vehicle.nivel_gasolina,
-        "kilometraje": vehicle.kilometraje,
-        "observaciones": vehicle.observaciones,
-        "total_registros": len(locations),
-        "locations": [
-            {
-                "latitude": loc.latitude,
-                "longitude": loc.longitude,
-                "timestamp": to_bogota(loc.created_at),
-                "fecha_formateada": to_bogota(loc.created_at).strftime("%d/%m/%Y %H:%M:%S")
-            }
-            for loc in locations
-        ]
-    }
-
 # 🔹 OBTENER HISTORIAL COMPLETO DE UBICACIONES POR NOMBRE
 @app.get("/api/historial/nombre/{vehicle_name}")
 def get_historial_por_nombre(vehicle_name: str, db: Session = Depends(get_db)):
@@ -383,13 +299,6 @@ def get_historial_por_nombre(vehicle_name: str, db: Session = Depends(get_db)):
         return {
             "vehicle_code": vehicle.code,
             "vehicle_name": vehicle.name,
-            "origen": vehicle.origen,
-            "destino": vehicle.destino,
-            "responsable_origen": vehicle.responsable_origen,
-            "responsable_destino": vehicle.responsable_destino,
-            "nivel_gasolina": vehicle.nivel_gasolina,
-            "kilometraje": vehicle.kilometraje,
-            "observaciones": vehicle.observaciones,
             "total_registros": 0,
             "locations": [],
             "message": "No hay registros de ubicación"
@@ -398,20 +307,68 @@ def get_historial_por_nombre(vehicle_name: str, db: Session = Depends(get_db)):
     return {
         "vehicle_code": vehicle.code,
         "vehicle_name": vehicle.name,
-        "origen": vehicle.origen,
-        "destino": vehicle.destino,
-        "responsable_origen": vehicle.responsable_origen,
-        "responsable_destino": vehicle.responsable_destino,
-        "nivel_gasolina": vehicle.nivel_gasolina,
-        "kilometraje": vehicle.kilometraje,
-        "observaciones": vehicle.observaciones,
         "total_registros": len(locations),
         "locations": [
             {
                 "latitude": loc.latitude,
                 "longitude": loc.longitude,
                 "timestamp": to_bogota(loc.created_at),
-                "fecha_formateada": to_bogota(loc.created_at).strftime("%d/%m/%Y %H:%M:%S")
+                "fecha_formateada": to_bogota(loc.created_at).strftime("%d/%m/%Y %H:%M:%S"),
+                "origen": loc.origen,
+                "destino": loc.destino,
+                "responsable_origen": loc.responsable_origen,
+                "responsable_destino": loc.responsable_destino,
+                "nivel_gasolina": loc.nivel_gasolina,
+                "kilometraje": loc.kilometraje,
+                "observaciones": loc.observaciones,
+            }
+            for loc in locations
+        ]
+    }
+
+
+# 🔹 OBTENER HISTORIAL POR CÓDIGO QR (para dashboard)
+@app.get("/api/historial/{vehicle_code}")
+def get_historial_por_codigo(vehicle_code: str, db: Session = Depends(get_db)):
+    """Obtiene el historial de ubicaciones de un vehículo por su código QR"""
+    vehicle = db.query(Vehicle).filter(Vehicle.code == vehicle_code).first()
+    
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    
+    locations = (
+        db.query(Location)
+        .filter(Location.vehicle_id == vehicle.id)
+        .order_by(Location.created_at.desc())
+        .all()
+    )
+    
+    if not locations:
+        return {
+            "vehicle_code": vehicle.code,
+            "vehicle_name": vehicle.name,
+            "total_registros": 0,
+            "locations": [],
+            "message": "No hay registros de ubicación"
+        }
+    
+    return {
+        "vehicle_code": vehicle.code,
+        "vehicle_name": vehicle.name,
+        "total_registros": len(locations),
+        "locations": [
+            {
+                "latitude": loc.latitude,
+                "longitude": loc.longitude,
+                "timestamp": to_bogota(loc.created_at),
+                "fecha_formateada": to_bogota(loc.created_at).strftime("%d/%m/%Y %H:%M:%S"),
+                "origen": loc.origen,
+                "destino": loc.destino,
+                "responsable_origen": loc.responsable_origen,
+                "responsable_destino": loc.responsable_destino,
+                "nivel_gasolina": loc.nivel_gasolina,
+                "kilometraje": loc.kilometraje,
+                "observaciones": loc.observaciones,
             }
             for loc in locations
         ]
@@ -452,6 +409,104 @@ def guardar_ubicacion_manual(data: dict, db: Session = Depends(get_db)):
         "longitude": location.longitude,
         "timestamp": to_bogota(location.created_at)
     }
+
+
+# 🔹 EXPORTAR A EXCEL CON FILTROS
+@app.get("/api/export-excel")
+def export_excel(
+    vehicle_code: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    db: Session = Depends(get_db),
+    user: str = Depends(login_required)
+):
+    """Exporta registros de ubicación a Excel con filtros de fecha y placa"""
+    
+    # Construcción de query base
+    query = db.query(Location).join(Vehicle)
+    
+    # Filtro por placa (vehículo) - requerido
+    if vehicle_code:
+        query = query.filter(Vehicle.code == vehicle_code)
+    else:
+        raise HTTPException(status_code=400, detail="vehicle_code es requerido")
+    
+    # Filtro por fechas
+    if date_from:
+        try:
+            date_from_dt = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            query = query.filter(Location.created_at >= date_from_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de date_from inválido (use YYYY-MM-DD)")
+    
+    if date_to:
+        try:
+            date_to_dt = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+            query = query.filter(Location.created_at <= date_to_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de date_to inválido (use YYYY-MM-DD)")
+    
+    locations = query.order_by(Location.created_at.desc()).all()
+    
+    if not locations:
+        raise HTTPException(status_code=404, detail="No hay registros que coincidan con los filtros")
+    
+    # Construir datos para Excel
+    data = []
+    for idx, loc in enumerate(locations, 1):
+        data.append({
+            "#": idx,
+            "Fecha y Hora": to_bogota(loc.created_at).strftime("%d/%m/%Y %H:%M:%S"),
+            "Código": loc.vehicle.code,
+            "Vehículo": loc.vehicle.name,
+            "Latitud": round(loc.latitude, 6),
+            "Longitud": round(loc.longitude, 6),
+            "Origen": loc.origen or "",
+            "Destino": loc.destino or "",
+            "Resp. Origen": loc.responsable_origen or "",
+            "Resp. Destino": loc.responsable_destino or "",
+            "Nivel Gasolina": loc.nivel_gasolina or "",
+            "Kilometraje": loc.kilometraje or "",
+            "Observaciones": loc.observaciones or ""
+        })
+    
+    # Crear DataFrame
+    df = pd.DataFrame(data)
+    
+    # Crear archivo Excel
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    excel_path = temp_file.name
+    temp_file.close()
+    
+    # Escribir Excel con formato
+    with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Historial', index=False)
+        
+        # Acceder a la hoja para ajustar ancho de columnas
+        worksheet = writer.sheets['Historial']
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            worksheet.column_dimensions[column_letter].width = adjusted_width
+    
+    # Generar nombre del archivo
+    if vehicle_code:
+        filename = f"Reporte_{vehicle_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    else:
+        filename = f"Reporte_Completo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return FileResponse(
+        path=excel_path,
+        filename=filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
 # 🔹 DASHBOARD - Ver historial del vehículo

@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_USER: qr_user
       POSTGRES_PASSWORD: qr_pass
-      POSTGRES_DB: qr_db
+      POSTGRES_DB: qr_db_nueva  
     ports:
       - "5433:5432"
     volumes:
@@ -25,7 +25,7 @@ services:
       DB_PASSWORD: qr_pass
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: qr_db
+      DB_NAME: qr_db_nueva
       # variables de seguridad (cambie en producción)
       ADMIN_USER: admin
       ADMIN_PASS: secret

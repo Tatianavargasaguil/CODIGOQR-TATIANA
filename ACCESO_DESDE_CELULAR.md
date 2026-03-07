@@ -131,7 +131,7 @@ http://192.168.1.100:8001 → ¡A usar!
 
 ---
 
-## 💡 BONUS: Encontrar IP rápidamente
+##  BONUS: Encontrar IP rápidamente
 
 ```powershell
 # En PowerShell (una línea)

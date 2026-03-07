@@ -41,11 +41,11 @@
                          ↓
 ┌─────────────────────────────────────────────────────────┐
 │  5️⃣ RESUMEN FINAL CON INFORMACIÓN                      │
-│  ├─ 🚗 Nombre del Vehículo                              │
-│  ├─ 📍 Latitud del registro                             │
-│  ├─ 📍 Longitud del registro                            │
-│  ├─ 🕒 Hora del registro                                │
-│  ├─ 🗺️ Mapa con ubicación exacta                        │
+│  ├─  Nombre del Vehículo                              │
+│  ├─  Latitud del registro                             │
+│  ├─  Longitud del registro                            │
+│  ├─  Hora del registro                                │
+│  ├─  Mapa con ubicación exacta                        │
 │  └─ Botones para escanear otro o ir al dashboard        │
 └─────────────────────────────────────────────────────────┘
 ```

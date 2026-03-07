@@ -173,7 +173,7 @@ Ahora que está segura, puedes:
 
 ---
 
-## 💡 TIPS
+##  TIPS
 
 - Anota tus credenciales (ADMIN_USER y ADMIN_PASS) en un lugar seguro
 - Si olvidas la contraseña, edita `.env` y cambiala
