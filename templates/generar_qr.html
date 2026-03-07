@@ -117,10 +117,70 @@
             background: #f0f0f0;
             color: #333;
         }
+        
+        .filtros-grid-qr {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+        
+        .filtros-grid-qr > div {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filtros-grid-qr label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .filtros-grid-qr input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .filtros-grid-qr > div:last-child {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .filtros-grid-qr button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
         .table-responsive {
             overflow-x: auto;
         }
         @media (max-width: 768px) {
+            .filtros-grid-qr {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .filtros-grid-qr > div:last-child {
+                grid-column: 1;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .filtros-grid-qr > div:last-child button {
+                flex: 1;
+                min-width: 100px;
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+            
             #historial-tabla th,
             #historial-tabla td {
                 padding: 8px;
@@ -321,23 +381,23 @@
         
         <!-- Panel de Filtros para Exportar Excel -->
         <div id="filtros-panel-qr" class="section" style="display: none; background: #fffdf7; border-color: #ffc107;">
-            <h3 style="color: #333; margin-bottom: 15px;"> Filtros y Exportación</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
+            <h3 style="color: #333; margin-bottom: 15px;">🔍 Filtros y Exportación</h3>
+            <div class="filtros-grid-qr">
                 <div>
-                    <label style="font-weight: 600; color: #333; margin-bottom: 5px; display: block; font-size: 14px;">Desde:</label>
-                    <input type="date" id="filtro-fecha-desde-qr" placeholder="Fecha desde" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                    <label>Desde:</label>
+                    <input type="date" id="filtro-fecha-desde-qr" placeholder="Fecha desde">
                 </div>
                 <div>
-                    <label style="font-weight: 600; color: #333; margin-bottom: 5px; display: block; font-size: 14px;">Hasta:</label>
-                    <input type="date" id="filtro-fecha-hasta-qr" placeholder="Fecha hasta" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                    <label>Hasta:</label>
+                    <input type="date" id="filtro-fecha-hasta-qr" placeholder="Fecha hasta">
                 </div>
                 <div>
-                    <label style="font-weight: 600; color: #333; margin-bottom: 5px; display: block; font-size: 14px;">:</label>
-                    <input type="text" id="filtro-placa-qr" placeholder="Placa" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                    <label>Código:</label>
+                    <input type="text" id="filtro-placa-qr" placeholder="Ej: veh_abc123">
                 </div>
                 <div>
-                    <button class="btn-primary" onclick="descargarExcelQR()" style="padding: 10px 20px; margin-right: 5px;">📥 Descargar</button>
-                    <button onclick="resetFiltrosQR()" style="padding: 10px 15px; background: #999; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">🔄</button>
+                    <button class="btn-primary" onclick="descargarExcelQR()">📥 Descargar</button>
+                    <button onclick="resetFiltrosQR()" style="background: #999; color: white;">🔄</button>
                 </div>
             </div>
         </div>

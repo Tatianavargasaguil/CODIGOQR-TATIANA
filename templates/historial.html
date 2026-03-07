@@ -427,6 +427,18 @@
         @media (max-width: 768px) {
             .filtros-grid {
                 grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .filtros-grid > div:last-child {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            
+            .filtros-grid > div:last-child button {
+                flex: 1;
+                min-width: 120px;
             }
             
             .search-group {
@@ -447,7 +459,22 @@
             }
             
             .filtro-btn, .filtro-btn-reset {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-buttons a {
                 width: 100%;
+            }
+            
+            .action-buttons button {
+                width: 100%;
+                padding: 12px;
+                font-size: 14px;
             }
         }
     </style>
