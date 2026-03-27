@@ -3,8 +3,8 @@ from typing import Optional, Union
 
 
 class LocationCreate(BaseModel):
-    latitude: float
-    longitude: float
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     # Agregar campos de formulario a LocationCreate
     origen: Optional[str] = None
     destino: Optional[str] = None
@@ -13,6 +13,7 @@ class LocationCreate(BaseModel):
     nivel_gasolina: Optional[str] = None
     kilometraje: Optional[str] = None
     observaciones: Optional[str] = None
+    direccion_completa: Optional[str] = None
 
 
 class VehicleCreate(BaseModel):
@@ -27,3 +28,8 @@ class VehicleResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class UnscannedVehicleCreate(BaseModel):
+    responsable_esperado: Optional[str] = None
+    motivo: Optional[str] = None

@@ -442,22 +442,19 @@
                 <p>No hay registros de ubicación para este vehículo.</p>
             </div>
             
-            <div class="table-responsive">
+            <div class="table-responsive" style="font-size: 13px;">
             <table class="historial-table" id="historial-tabla">
                 <thead>
                     <tr>
                         <th>#</th>
                         <th>Fecha y Hora</th>
-                        <th>Latitud</th>
-                        <th>Longitud</th>
+                        <th>Lat</th>
+                        <th>Lon</th>
                         <th>Dirección</th>
                         <th>Origen</th>
                         <th>Destino</th>
-                        <th>Resp. Origen</th>
-                        <th>Resp. Destino</th>
-                        <th>Nivel Gasolina</th>
-                        <th>Kilometraje</th>
-                        <th>Observaciones</th>
+                        <th>Gasolina</th>
+                        <th>Km</th>
                     </tr>
                 </thead>
                 <tbody id="historial-tbody">
@@ -603,53 +600,21 @@
                     row.innerHTML = `
                         <td>${index + 1}</td>
                         <td>${loc.fecha_formateada}</td>
-                        <td><span class="coordinates">${loc.latitude.toFixed(6)}</span></td>
-                        <td><span class="coordinates">${loc.longitude.toFixed(6)}</span></td>
-                        <td class="address-cell">Cargando...</td>
+                        <td><span class="coordinates">${loc.latitude.toFixed(3)}</span></td>
+                        <td><span class="coordinates">${loc.longitude.toFixed(3)}</span></td>
+                        <td>${loc.direccion_completa || 'N/A'}</td>
                         <td>${loc.origen || ''}</td>
                         <td>${loc.destino || ''}</td>
-                        <td>${loc.responsable_origen || ''}</td>
-                        <td>${loc.responsable_destino || ''}</td>
                         <td>${loc.nivel_gasolina != null ? loc.nivel_gasolina : ''}</td>
                         <td>${loc.kilometraje != null ? loc.kilometraje : ''}</td>
-                        <td>${loc.observaciones || ''}</td>
                     `;
                     tbody.appendChild(row);
-                    // pedir dirección en segundo plano
-                    getAddress(loc.latitude, loc.longitude).then(addr => {
-                        row.querySelector('.address-cell').textContent = addr;
-                    });
                 });
                 
                 // Mostrar mapa de historial
                 mostrarMapaHistorial();
             }
             
-            // función de utilidad para geocodificar lat/lng
-            async function getAddress(lat, lon) {
-                try {
-                    const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
-                    if (!resp.ok) return 'N/D';
-                    const data = await resp.json();
-                    // try to compose a shorter address from components
-                    if (data && data.address) {
-                        const addr = data.address;
-                        const parts = [];
-                        // carretera/carrera/avenida/road
-                        if (addr.road) parts.push(addr.road);
-                        if (addr.house_number) parts.push(addr.house_number);
-                        if (addr.neighbourhood) parts.push(addr.neighbourhood);
-                        if (addr.suburb) parts.push(addr.suburb);
-                        if (parts.length) {
-                            return parts.join(' ');
-                        }
-                    }
-                    return data.display_name || 'N/D';
-                } catch (e) {
-                    return 'N/D';
-                }
-            }
-
             function mostrarMapaHistorial() {
                 // Validar que historialData existe
                 if (!historialData || !historialData.locations) {

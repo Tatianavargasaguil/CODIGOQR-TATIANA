@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Puerta - Verificación de Escaneos</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .section {
+            margin: 20px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        #qr-reader {
+            width: 100%;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .scanner-placeholder {
+            width: 100%;
+            height: 250px;
+            background: #f5f5f5;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            margin: 20px 0;
+            flex-direction: column;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .result-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .result-box.show {
+            display: block;
+        }
+        
+        .result-success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+        
+        .result-error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .result-warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+        }
+        
+        .result-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .result-info {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        
+        .result-info strong {
+            color: inherit;
+            display: inline-block;
+            min-width: 150px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .badge-scanned {
+            background: #28a745;
+            color: white;
+        }
+        
+        .badge-not-scanned {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .report-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .report-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .report-table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .header-left {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .btn-back {
+            background: #6c757d;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        
+        .btn-back:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .logout-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        
+        .logout-link:hover {
+            color: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header con botón Volver -->
+        <div class="header-bar">
+            <div class="header-left">
+                {% if request.session.user %}
+                    Usuario: <strong>{{ request.session.user }}</strong>
+                {% endif %}
+            </div>
+            <div class="header-right">
+                <a href="/" class="btn-back">
+                    ← Volver a Escaneo
+                </a>
+                {% if request.session.user %}
+                    <a href="/logout" class="logout-link">
+                        Cerrar sesión
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <header>
+            <h1>🚪 Control de Puerta</h1>
+            <p class="subtitle">Verifica si los vehículos fueron escaneados al salir</p>
+        </header>
+        
+        <!-- TABS -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('manual')">✏️ Búsqueda Manual</button>
+            <button class="tab" onclick="switchTab('report')">📊 Reporte del Día</button>
+        </div>
+        
+        <!-- TAB 1: BÚSQUEDA MANUAL -->
+        <div id="manual" class="tab-content active">
+            <div class="section">
+                <div class="form-group">
+                    <label>Código o Placa del Vehículo:</label>
+                    <input type="text" id="manual-vehicle-code" placeholder="Ej: veh_abc123 o Buseta 1" />
+                </div>
+                <button class="btn-primary" onclick="searchVehicleManual()">
+                    🔍 Buscar
+                </button>
+            </div>
+        </div>
+        
+        <!-- TAB 2: REPORTE -->
+        <div id="report" class="tab-content">
+            <div class="section">
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="loadDailyReport()" style="flex: 1;">
+                        📊 Cargar Reporte de Hoy
+                    </button>
+                    <button class="btn-success" onclick="downloadFullReport()">
+                        📥 Descargar Excel
+                    </button>
+                </div>
+                <div id="report-container"></div>
+            </div>
+        </div>
+        
+        <!-- LOADING INDICATOR -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Procesando...</p>
+        </div>
+        
+        <!-- RESULTADO DEL ESCANEO/BÚSQUEDA -->
+        <div id="result" class="result-box"></div>
+    </div>
+    
+    <script>
+        let qrScanner = null;
+        let scannerInitialized = false;
+        let lastScannedCode = null;
+        let isProcessingQR = false;
+        let lastScanTime = 0;
+        
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+        
+        function updateScannerStatus(message) {
+            const statusEl = document.getElementById('scanner-status');
+            if (statusEl) {
+                statusEl.textContent = message;
+            }
+        }
+        
+        function initScanner() {
+            if (scannerInitialized || qrScanner) return;
+            
+            try {
+                qrScanner = new Html5Qrcode("qr-reader");
+                updateScannerStatus("⏳ Pidiendo permisos de cámara...");
+                trySimpleCameraStart().catch((err) => {
+                    console.error("Error iniciando cámara:", err);
+                    updateScannerStatus("❌ No se pudo acceder a la cámara. Intenta la búsqueda manual.");
+                });
+            } catch (error) {
+                console.error("Error al inicializar scanner:", error);
+                updateScannerStatus("❌ Error al inicializar el escáner");
+            }
+        }
+
+        async function trySimpleCameraStart() {
+            const options = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+            };
+
+            const isMobile = isMobileDevice();
+
+            if (isMobile) {
+                // En móbiles: PRIORIZAMOS CÁMARA TRASERA
+                try {
+                    updateScannerStatus("⏳ Iniciando cámara trasera...");
+                    await qrScanner.start('environment', options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateScannerStatus("✅ Cámara lista. Apunta el QR al marco verde.");
+                    return;
+                } catch (err) {
+                    console.warn("Cámara trasera falló:", err);
+                }
+
+                // Intenta con constraint facingMode más simple
+                try {
+                    updateScannerStatus("⏳ Intentando cámara trasera...");
+                    await qrScanner.start({ facingMode: 'environment' }, options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateScannerStatus("✅ Cámara lista. Apunta el QR al marco verde.");
+                    return;
+                } catch (err) {
+                    console.warn("FacingMode environment falló:", err);
+                }
+
+                // Intenta cámara frontal como fallback
+                try {
+                    updateScannerStatus("⏳ Intentando cámara frontal...");
+                    await qrScanner.start('user', options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateScannerStatus("✅ Cámara lista. Apunta el QR al marco verde.");
+                    return;
+                } catch (err) {
+                    console.warn("Cámara frontal falló:", err);
+                }
+
+                // Intenta sin constraint - video simple
+                try {
+                    updateScannerStatus("⏳ Iniciando video...");
+                    await qrScanner.start({ video: true }, options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateScannerStatus("✅ Cámara lista. Apunta el QR al marco verde.");
+                    return;
+                } catch (err) {
+                    console.warn("Video simple falló:", err);
+                    throw err;
+                }
+            } else {
+                // En desktop: usar cámara frontal
+                try {
+                    updateScannerStatus("⏳ Iniciando cámara...");
+                    await qrScanner.start('user', options, onQRCodeScanned, onQRScanError);
+                    scannerInitialized = true;
+                    updateScannerStatus("✅ Cámara lista. Apunta el QR al marco verde.");
+                    return;
+                } catch (err) {
+                    console.error("Error en desktop:", err);
+                    throw err;
+                }
+            }
+        }
+        
+        function stopScanner() {
+            if (qrScanner && scannerInitialized) {
+                qrScanner.stop().then(() => {
+                    scannerInitialized = false;
+                    qrScanner = null;
+                }).catch(err => console.error("Error stopping scanner:", err));
+            }
+        }
+        
+        function onQRCodeScanned(decodedText) {
+            // Evitar escaneos duplicados y muy rápidos
+            const now = Date.now();
+            
+            // Si es el mismo código y fue hace menos de 1 segundo, ignorar
+            if (decodedText === lastScannedCode && (now - lastScanTime) < 1000) {
+                return;
+            }
+            
+            // Si ya estamos procesando un escaneo, no procesar otro
+            if (isProcessingQR) {
+                return;
+            }
+            
+            console.log("QR Escaneado:", decodedText);
+            lastScannedCode = decodedText;
+            lastScanTime = now;
+            isProcessingQR = true;
+            
+            checkVehicleScan(decodedText);
+        }
+
+        function onQRScanError(error) {
+            // Silenciosamente ignorar errores de scanner
+        }
+        
+        function checkVehicleScan(vehicleCode) {
+            showLoading(true);
+            hideResult();
+            
+            fetch(`/api/check-vehicle-scan/${vehicleCode}`, {
+                credentials: "include"
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showLoading(false);
+                    
+                    if (!data.found) {
+                        showResult('error', '❌ Vehículo no encontrado', `El código ${vehicleCode} no está registrado en el sistema.`);
+                        return;
+                    }
+                    
+                    if (data.was_scanned) {
+                        // SÍ fue escaneado
+                        showResult('success',
+                            `✅ ${data.vehicle_name} - ESCANEADO`,
+                            `
+                            <div class="status-badge badge-scanned">✅ ESCANEADO HOY</div>
+                            <div class="result-info">
+                                <strong>Vehículo:</strong> ${data.vehicle_name}<br>
+                                <strong>Código:</strong> ${data.vehicle_code}<br>
+                                <strong>Hora:</strong> ${data.scanned_at}<br>
+                                <strong>Responsable:</strong> ${data.responsable}<br>
+                                <strong>Ubicación:</strong> ${data.location}
+                            </div>
+                            `
+                        );
+                        // Permitir siguiente escaneo después de 2 segundos
+                        setTimeout(() => { isProcessingQR = false; }, 2000);
+                    } else {
+                        // NO fue escaneado
+                        showResult('warning',
+                            `⚠️ ${data.vehicle_name} - NO ESCANEADO`,
+                            `
+                            <div class="status-badge badge-not-scanned">❌ NO FUE ESCANEADO</div>
+                            <p style="margin: 15px 0; font-weight: 600;">Este vehículo salió sin registro de escaneo.</p>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                                <strong style="color: #667eea;">REGISTRA LA FALTA:</strong>
+                            </div>
+                            <div class="form-group">
+                                <label>👤 ¿Quién DEBERÍA haber escaneado? (Nombre del movilizador):</label>
+                                <input type="text" id="responsable-name" placeholder="Ej: Juan Pérez, Carlos López, etc." />
+                            </div>
+                            <div class="form-group">
+                                <label>📝 Observaciones/Detalles (¿por qué no lo hizo?):</label>
+                                <textarea id="unscanned-motivo" placeholder="Ej: Se fue corriendo sin avisar, tenía prisa, no llego a tiempo, etc." style="min-height: 100px;"></textarea>
+                            </div>
+                            <button class="btn-danger" onclick="markUnscanned('${vehicleCode}')">
+                                ✗ Confirmar como NO Escaneado
+                            </button>
+                            <button class="btn-secondary" onclick="hideResult()" style="flex: 1;">
+                                Cancelar
+                            </button>
+                            `,
+                            false
+                        );
+                        // NO permitir siguiente escaneo hasta que se registre
+                    }
+                })
+                .catch(error => {
+                    showLoading(false);
+                    isProcessingQR = false;
+                    showResult('error', 'Error', `Error al buscar el vehículo: ${error.message}`);
+                });
+        }
+        
+        function searchVehicleManual() {
+            const vehicleCode = document.getElementById('manual-vehicle-code').value.trim();
+            
+            if (!vehicleCode) {
+                showResult('error', '❌ Error', 'Por favor ingresa un código o placa de vehículo.');
+                return;
+            }
+            
+            checkVehicleScan(vehicleCode);
+        }
+        
+        function markUnscanned(vehicleCode) {
+            const responsable = document.getElementById('responsable-name').value.trim();
+            const motivo = document.getElementById('unscanned-motivo').value.trim();
+            
+            showLoading(true);
+            
+            fetch(`/api/mark-unscanned/${vehicleCode}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: "include",
+                body: JSON.stringify({
+                    responsable_esperado: responsable || null,
+                    motivo: motivo || null
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showLoading(false);
+                    
+                    if (data.success) {
+                        showResult('success',
+                            '✓ Registrado Correctamente',
+                            `
+                            <div class="result-info">
+                                <strong>Vehículo:</strong> ${data.vehicle_name}<br>
+                                <strong>Código:</strong> ${data.vehicle_code}<br>
+                                <strong>Responsable esperado:</strong> ${data.responsable_esperado || 'No registrado'}<br>
+                                <strong>Registrado por:</strong> ${data.verified_by}<br>
+                                <strong>Hora:</strong> ${data.timestamp}
+                            </div>
+                            <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                                ℹ️ Este registro será incluido en el reporte de incumplimientos.
+                            </p>
+                            <button class="btn-primary" onclick="location.reload()" style="width: 100%;">
+                                ← Volver a Escanear
+                            </button>
+                            `
+                        );
+                        // Permitir nuevamente escaneos
+                        setTimeout(() => { isProcessingQR = false; }, 2000);
+                    } else {
+                        showResult('error', 'Error', data.error || 'No se pudo registrar el vehículo.');
+                        isProcessingQR = false;
+                    }
+                })
+                .catch(error => {
+                    showLoading(false);
+                    isProcessingQR = false;
+                    showResult('error', 'Error', `Error al registrar: ${error.message}`);
+                });
+        }
+        
+        function loadDailyReport() {
+            showLoading(true);
+            
+            fetch('/api/report-daily', {
+                credentials: "include"
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showLoading(false);
+                    renderReport(data);
+                })
+                .catch(error => {
+                    showLoading(false);
+                    showResult('error', 'Error', `Error al cargar reporte: ${error.message}`);
+                });
+        }
+        
+        function renderReport(data) {
+            let html = `
+                <div style="margin-top: 20px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">📊 Reporte del ${data.fecha}</h3>
+                    
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-number">${data.resumen.total_vehiculos}</div>
+                            <div class="stat-label">Total Vehículos</div>
+                        </div>
+                        <div class="stat-card" style="border-left-color: #28a745;">
+                            <div class="stat-number" style="color: #28a745;">${data.resumen.escaneados}</div>
+                            <div class="stat-label">Escaneados</div>
+                        </div>
+                        <div class="stat-card" style="border-left-color: #dc3545;">
+                            <div class="stat-number" style="color: #dc3545;">${data.resumen.no_escaneados}</div>
+                            <div class="stat-label">No Escaneados</div>
+                        </div>
+                        <div class="stat-card" style="border-left-color: #ffc107;">
+                            <div class="stat-number" style="color: #ffc107;">${data.resumen.tasa_cumplimiento}%</div>
+                            <div class="stat-label">Cumplimiento</div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="color: #28a745; margin-top: 20px; margin-bottom: 10px;">✅ Vehículos Escaneados (${data.escaneados.length})</h4>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Vehículo</th>
+                                <th>Hora</th>
+                                <th>Responsable</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.escaneados.map(v => `
+                                <tr>
+                                    <td><strong>${v.name}</strong><br><small>${v.code}</small></td>
+                                    <td>${v.hora}</td>
+                                    <td>${v.responsable}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    ${data.no_escaneados.length > 0 ? `
+                        <h4 style="color: #dc3545; margin-top: 20px; margin-bottom: 10px;">❌ Vehículos NO Escaneados (${data.no_escaneados.length})</h4>
+                        <table class="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Vehículo</th>
+                                    <th>Responsable</th>
+                                    <th>Motivo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.no_escaneados.map(v => `
+                                    <tr>
+                                        <td><strong>${v.name}</strong><br><small>${v.code}</small></td>
+                                        <td>${v.responsable_esperado || '-'}</td>
+                                        <td>${v.motivo || '-'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('report-container').innerHTML = html;
+        }
+        
+        function showResult(type, title, content, hideButtons = true) {
+            const resultEl = document.getElementById('result');
+            resultEl.className = `result-box show result-${type}`;
+            resultEl.innerHTML = `
+                <div class="result-title">${title}</div>
+                <div class="result-info">${content}</div>
+            `;
+            
+            if (hideButtons && type === 'success') {
+                setTimeout(() => {
+                    resultEl.classList.remove('show');
+                }, 8000);
+            }
+        }
+        
+        function hideResult() {
+            document.getElementById('result').classList.remove('show');
+            // Permitir nuevamente escaneos
+            isProcessingQR = false;
+            lastScannedCode = null;
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
+        }
+        
+        // 🔍 BUSCAR VEHÍCULOS NO ESCANEADOS CON FILTROS
+        function searchUnscanned() {
+            const responsable = document.getElementById('filter-responsable').value.trim();
+            const vehicleCode = document.getElementById('filter-vehicle-code').value.trim();
+            const vehicleName = document.getElementById('filter-vehicle-name').value.trim();
+            
+            showLoading(true);
+            
+            let url = '/api/search-unscanned?';
+            if (responsable) url += `responsable=${encodeURIComponent(responsable)}&`;
+            if (vehicleCode) url += `vehicle_code=${encodeURIComponent(vehicleCode)}&`;
+            if (vehicleName) url += `vehicle_name=${encodeURIComponent(vehicleName)}&`;
+            
+            fetch(url, {
+                credentials: "include"
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showLoading(false);
+                    renderSearchResults(data);
+                })
+                .catch(error => {
+                    showLoading(false);
+                    showResult('error', 'Error', `Error en búsqueda: ${error.message}`);
+                });
+        }
+        
+        function renderSearchResults(data) {
+            const container = document.getElementById('search-results-container');
+            
+            if (data.total === 0) {
+                container.innerHTML = `
+                    <div style="background: #d4edda; border: 2px solid #28a745; color: #155724; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                        <strong>✅ Excelente!</strong> No hay vehículos sin escanear con esos criterios.
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div style="margin-top: 20px;">
+                    <h4 style="color: #dc3545; margin-bottom: 10px;">
+                        ❌ Se encontraron ${data.total} vehículos NO escaneados
+                    </h4>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Placa</th>
+                                <th>Vehículo</th>
+                                <th>Responsable</th>
+                                <th>Motivo</th>
+                                <th>Hora</th>
+                                <th>Verificado por</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            data.resultados.forEach(r => {
+                html += `
+                    <tr>
+                        <td><strong>${r.vehicle_code}</strong></td>
+                        <td>${r.vehicle_name}</td>
+                        <td>${r.responsable_esperado || '-'}</td>
+                        <td>${r.motivo || '-'}</td>
+                        <td>${r.registrado_a}</td>
+                        <td>${r.verificado_por || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                    <div class="btn-group" style="margin-top: 20px;">
+                        <button class="btn-success" onclick="downloadUnscannedOnly()">
+                            📥 Descargar Solo No Escaneados
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function clearFilters() {
+            document.getElementById('filter-responsable').value = '';
+            document.getElementById('filter-vehicle-code').value = '';
+            document.getElementById('filter-vehicle-name').value = '';
+            document.getElementById('search-results-container').innerHTML = '';
+        }
+        
+        // 📥 DESCARGAR EXCEL
+        function downloadFullReport() {
+            showLoading(true);
+            
+            fetch('/api/export-daily-report-excel', {
+                credentials: "include"
+            })
+                .then(response => response.blob())
+                .then(blob => {
+                    showLoading(false);
+                    
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `reporte_diario_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showResult('success', '✓ Descargado', 'El reporte fue descargado correctamente.');
+                })
+                .catch(error => {
+                    showLoading(false);
+                    showResult('error', 'Error', `Error al descargar: ${error.message}`);
+                });
+        }
+        
+        function downloadUnscannedOnly() {
+            showLoading(true);
+            
+            fetch('/api/export-unscanned-excel', {
+                credentials: "include"
+            })
+                .then(response => response.blob())
+                .then(blob => {
+                    showLoading(false);
+                    
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `no_escaneados_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showResult('success', '✓ Descargado', 'Archivo de no escaneados descargado correctamente.');
+                })
+                .catch(error => {
+                    showLoading(false);
+                    showResult('error', 'Error', `Error al descargar: ${error.message}`);
+                });
+        }
+        
+        // Inicializar scanner al cargar
+        window.addEventListener('load', () => {
+            initScanner();
+        });
+    </script>
+</body>
+</html>

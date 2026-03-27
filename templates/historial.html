@@ -597,6 +597,7 @@
                             <th>Fecha y Hora</th>
                             <th>Latitud</th>
                             <th>Longitud</th>
+                            <th>Dirección</th>
                             <th>Origen</th>
                             <th>Destino</th>
                             <th>Resp. Origen</th>
@@ -764,6 +765,7 @@
                     <td>${loc.fecha_formateada}</td>
                     <td><span class="coordinates">${loc.latitude.toFixed(6)}</span></td>
                     <td><span class="coordinates">${loc.longitude.toFixed(6)}</span></td>
+                    <td>${loc.direccion_completa || '—'}</td>
                     <td>${loc.origen || '—'}</td>
                     <td>${loc.destino || '—'}</td>
                     <td>${loc.responsable_origen || '—'}</td>

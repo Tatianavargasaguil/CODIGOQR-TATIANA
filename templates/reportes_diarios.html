@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes por Día - QR Tatiana</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .fecha-selector {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        
+        .fecha-grupo {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .fecha-grupo label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+        
+        .fecha-grupo input[type="date"] {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 200px;
+            transition: border-color 0.3s;
+        }
+        
+        .fecha-grupo input[type="date"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .botones {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-consultar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-consultar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-hoy {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .btn-hoy:hover {
+            background: #138496;
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .btn-volver {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95em;
+        }
+        
+        .btn-volver:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .resumen {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card.escaneados {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .stat-card.no-escaneados {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        }
+        
+        .stat-card.sin-registro {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+        
+        .stat-card h3 {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .numero {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .tab {
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            font-size: 1em;
+        }
+        
+        .tab.activo {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab:hover {
+            color: #667eea;
+        }
+        
+        .tabla-contenedor {
+            margin-bottom: 30px;
+        }
+        
+        .tabla-titulo {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        table thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            text-transform: uppercase;
+            font-size: 0.85em;
+        }
+        
+        table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        table tbody tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .estado-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .estado-escaneado {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .estado-no-escaneado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .sin-datos {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+            font-size: 1.1em;
+        }
+        
+        .sin-datos svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .error-mensaje {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #721c24;
+        }
+        
+        .responsable-cell {
+            font-size: 0.9em;
+        }
+        
+        .tabla-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+        }
+        
+        .tabla-wrapper::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        .tabla-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .tabla-wrapper::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+        
+        .tabla-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+        
+        .responsable-cell div {
+            margin: 2px 0;
+        }
+        
+        .responsable-label {
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        .responsable-valor {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .tasa-cumplimiento {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .tasa-cumplimiento.bajo {
+            color: #dc3545;
+        }
+        
+        .exportar-btn {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        
+        .exportar-btn:hover {
+            background: #218838;
+        }
+        
+        .acciones {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .navbar {
+                margin-bottom: 20px;
+            }
+            
+            .btn-volver {
+                padding: 12px 18px;
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .fecha-selector {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .fecha-grupo input[type="date"] {
+                width: 100%;
+            }
+            
+            .botones {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+            
+            table {
+                font-size: 0.75em;
+                min-width: 800px;
+            }
+            
+            table th, table td {
+                padding: 8px 6px;
+            }
+            
+            .tabla-wrapper {
+                margin-bottom: 20px;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .resumen {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Barra de Navegación -->
+        <div class="navbar">
+            <a href="/" class="btn-volver">← Volver a Principal</a>
+            <div></div>
+        </div>
+        
+        <div class="header">
+            <h1>📅 Reportes por Día</h1>
+            <p>Selecciona una fecha para ver todos los escaneos realizados ese día</p>
+        </div>
+        
+        <!-- Selector de Fecha -->
+        <div class="fecha-selector">
+            <div class="fecha-grupo">
+                <label for="fechaInput">Fecha:</label>
+                <input type="date" id="fechaInput">
+            </div>
+            <div class="botones">
+                <button class="btn-consultar" onclick="consultarFecha()">🔍 Consultar</button>
+                <button class="btn-hoy" onclick="setearHoy()">📍 Hoy</button>
+            </div>
+        </div>
+        
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Cargando datos...</p>
+        </div>
+        
+        <!-- Contenedor de Resultados -->
+        <div id="resultados" style="display: none;">
+            <!-- Resumen -->
+            <div class="resumen" id="resumen"></div>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab activo" onclick="mostrarTab('escaneos')">✅ Escaneados</button>
+                <button class="tab" onclick="mostrarTab('no-escaneos')">❌ No Escaneados</button>
+            </div>
+            
+            <!-- Tabla Escaneados -->
+            <div id="tab-escaneos" class="tabla-contenedor">
+                <div class="tabla-titulo">✅ Vehículos Escaneados</div>
+                <div class="tabla-wrapper">
+                <table id="tablaEscaneos">
+                    <thead>
+                        <tr>
+                            <th>Placa</th>
+                            <th>Nombre Vehículo</th>
+                            <th>Fecha y Hora Escaneo</th>
+                            <th>Responsable Origen</th>
+                            <th>Responsable Destino</th>
+                            <th>Origen</th>
+                            <th>Destino</th>
+                            <th>Gasolina</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+            
+            <!-- Tabla No Escaneados -->
+            <div id="tab-no-escaneos" class="tabla-contenedor" style="display: none;">
+                <div class="tabla-titulo">❌ Vehículos No Escaneados</div>
+                <div class="tabla-wrapper">
+                <table id="tablaNoEscaneos">
+                    <thead>
+                        <tr>
+                            <th>Placa</th>
+                            <th>Nombre Vehículo</th>
+                            <th>Responsable Esperado</th>
+                            <th>Verificado Por</th>
+                            <th>Motivo</th>
+                            <th>Fecha y Hora Registro</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>                </div>            </div>
+            
+            <!-- Acciones -->
+            <div class="acciones">
+                <button class="exportar-btn" onclick="exportarExcel()">⬇️ Descargar Excel</button>
+            </div>
+        </div>
+        
+        <!-- Sin Datos -->
+        <div id="sinDatos" style="display: none;">
+            <div class="sin-datos">
+                <p>📭 Selecciona una fecha para ver los escaneos del día</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let unfinishedDateRequest = null;
+        
+        // Establecer fecha de hoy por defecto
+        function setearHoy() {
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('fechaInput').value = hoy;
+            consultarFecha();
+        }
+        
+        // Consultar escaneos de una fecha
+        async function consultarFecha() {
+            const fecha = document.getElementById('fechaInput').value;
+            
+            if (!fecha) {
+                alert('Por favor selecciona una fecha');
+                return;
+            }
+            
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch(`/api/escaneos-por-fecha?fecha=${fecha}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarResultados(data);
+                } else {
+                    mostrarError(data.error || 'Error al consultar los datos');
+                }
+            } catch (error) {
+                mostrarError('Error al conectar con el servidor');
+                console.error(error);
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+        
+        // Mostrar resultados
+        function mostrarResultados(data) {
+            // Mostrar resumen
+            const resumenDiv = document.getElementById('resumen');
+            const { total_vehiculos, escaneados, no_escaneados, sin_registro, tasa_cumplimiento } = data.resumen;
+            
+            resumenDiv.innerHTML = `
+                <div class="stat-card">
+                    <h3>Total Vehículos</h3>
+                    <div class="numero">${total_vehiculos}</div>
+                </div>
+                <div class="stat-card escaneados">
+                    <h3>Escaneados</h3>
+                    <div class="numero">${escaneados}</div>
+                </div>
+                <div class="stat-card no-escaneados">
+                    <h3>No Escaneados</h3>
+                    <div class="numero">${no_escaneados}</div>
+                </div>
+                <div class="stat-card sin-registro">
+                    <h3>Sin Registro</h3>
+                    <div class="numero">${sin_registro}</div>
+                </div>
+                <div class="stat-card escaneados">
+                    <h3>Tasa Cumplimiento</h3>
+                    <div class="numero">${tasa_cumplimiento}%</div>
+                </div>
+            `;
+            
+            // Llenar tabla de escaneados
+            const tablaEscaneos = document.getElementById('tablaEscaneos').querySelector('tbody');
+            tablaEscaneos.innerHTML = '';
+            
+            if (data.escaneos.length > 0) {
+                data.escaneos.forEach(escaneo => {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = `
+                        <td><strong>${escaneo.placa}</strong></td>
+                        <td>${escaneo.nombre_vehiculo}</td>
+                        <td>${escaneo.hora_escaneo}</td>
+                        <td>${escaneo.responsable_origen}</td>
+                        <td>${escaneo.responsable_destino}</td>
+                        <td>${escaneo.origen}</td>
+                        <td>${escaneo.destino}</td>
+                        <td>${escaneo.nivel_gasolina}</td>
+                    `;
+                    tablaEscaneos.appendChild(fila);
+                });
+            } else {
+                tablaEscaneos.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">No hay escaneos registrados</td></tr>';
+            }
+            
+            // Llenar tabla de no escaneados
+            const tablaNoEscaneos = document.getElementById('tablaNoEscaneos').querySelector('tbody');
+            tablaNoEscaneos.innerHTML = '';
+            
+            if (data.no_escaneados.length > 0) {
+                data.no_escaneados.forEach(no_escaneo => {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = `
+                        <td><strong>${no_escaneo.placa}</strong></td>
+                        <td>${no_escaneo.nombre_vehiculo}</td>
+                        <td>${no_escaneo.responsable_esperado}</td>
+                        <td>${no_escaneo.verificado_por}</td>
+                        <td>${no_escaneo.motivo}</td>
+                        <td>${no_escaneo.hora_registro}</td>
+                    `;
+                    tablaNoEscaneos.appendChild(fila);
+                });
+            } else {
+                tablaNoEscaneos.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999;">No hay vehículos no escaneados</td></tr>';
+            }
+            
+            // Mostrar resultados
+            document.getElementById('sinDatos').style.display = 'none';
+            document.getElementById('resultados').style.display = 'block';
+            
+            // Guardar datos para exportación
+            window.datosActuales = data;
+        }
+        
+        // Mostrar/ocultar tabs
+        function mostrarTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('activo'));
+            document.querySelectorAll('.tabla-contenedor').forEach(t => t.style.display = 'none');
+            
+            event.target.classList.add('activo');
+            document.getElementById('tab-' + tab).style.display = 'block';
+        }
+        
+        // Mostrar error
+        function mostrarError(mensaje) {
+            document.getElementById('sinDatos').innerHTML = `
+                <div class="error-mensaje">
+                    <strong>⚠️ Error:</strong> ${mensaje}
+                </div>
+            `;
+            document.getElementById('sinDatos').style.display = 'block';
+            document.getElementById('resultados').style.display = 'none';
+        }
+        
+        // Mostrar/ocultar loading
+        function mostrarLoading(mostrar) {
+            document.getElementById('loading').style.display = mostrar ? 'block' : 'none';
+        }
+        
+        // Exportar a Excel
+        function exportarExcel() {
+            if (!window.datosActuales) {
+                alert('No hay datos para exportar');
+                return;
+            }
+            
+            const data = window.datosActuales;
+            const fecha = document.getElementById('fechaInput').value;
+            
+            // Crear datos para Excel
+            const datosExcel = [];
+            
+            // Encabezado
+            datosExcel.push(['REPORTE DE ESCANEOS - ' + fecha]);
+            datosExcel.push([]);
+            datosExcel.push(['RESUMEN']);
+            datosExcel.push(['Total Vehículos', data.resumen.total_vehiculos]);
+            datosExcel.push(['Escaneados', data.resumen.escaneados]);
+            datosExcel.push(['No Escaneados', data.resumen.no_escaneados]);
+            datosExcel.push(['Sin Registro', data.resumen.sin_registro]);
+            datosExcel.push(['Tasa Cumplimiento %', data.resumen.tasa_cumplimiento]);
+            datosExcel.push([]);
+            
+            // Escaneos
+            datosExcel.push(['VEHÍCULOS ESCANEADOS']);
+            datosExcel.push(['Placa', 'Nombre', 'Fecha y Hora', 'Responsable Origen', 'Responsable Destino', 'Origen', 'Destino', 'Gasolina', 'Kilometraje', 'Observaciones']);
+            
+            data.escaneos.forEach(escaneo => {
+                datosExcel.push([
+                    escaneo.placa,
+                    escaneo.nombre_vehiculo,
+                    escaneo.hora_escaneo,
+                    escaneo.responsable_origen,
+                    escaneo.responsable_destino,
+                    escaneo.origen,
+                    escaneo.destino,
+                    escaneo.nivel_gasolina,
+                    escaneo.kilometraje,
+                    escaneo.observaciones
+                ]);
+            });
+            
+            datosExcel.push([]);
+            datosExcel.push(['VEHÍCULOS NO ESCANEADOS']);
+            datosExcel.push(['Placa', 'Nombre', 'Responsable Esperado', 'Verificado Por', 'Motivo', 'Fecha y Hora Registro']);
+            
+            data.no_escaneados.forEach(no_escaneo => {
+                datosExcel.push([
+                    no_escaneo.placa,
+                    no_escaneo.nombre_vehiculo,
+                    no_escaneo.responsable_esperado,
+                    no_escaneo.verificado_por,
+                    no_escaneo.motivo,
+                    no_escaneo.hora_registro
+                ]);
+            });
+            
+            // Crear archivo Excel usando SheetJS
+            const sheet = XLSX.utils.aoa_to_sheet(datosExcel);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, sheet, "Reporte");
+            XLSX.writeFile(workbook, `reporte_${fecha}.xlsx`);
+        }
+        
+        // Inicializar
+        window.addEventListener('DOMContentLoaded', () => {
+            setearHoy();
+        });
+    </script>
+    
+    <!-- SheetJS para exportar a Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+</body>
+</html>

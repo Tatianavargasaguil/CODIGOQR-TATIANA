@@ -10,8 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from .db import engine, Base, get_db
-from .models import Vehicle, Location
-from .schemas import LocationCreate, VehicleCreate
+from .models import Vehicle, Location, UnscannedVehicle
+from .schemas import LocationCreate, VehicleCreate, UnscannedVehicleCreate
 import uuid
 from dotenv import load_dotenv
 import pandas as pd
@@ -98,6 +98,12 @@ def index(request: Request, user: str = Depends(login_required)):
     return templates.TemplateResponse("scan.html", {"request": request})
 
 
+# 🔹 PÁGINA DE CONTROL DE PUERTA
+@app.get("/puerta", response_class=HTMLResponse)
+def puerta_control(request: Request, user: str = Depends(login_required)):
+    return templates.TemplateResponse("puerta.html", {"request": request})
+
+
 # 🔹 PÁGINA PARA GENERAR CÓDIGOS QR
 @app.get("/generar-qr", response_class=HTMLResponse)
 def generar_qr_page(request: Request, user: str = Depends(login_required)):
@@ -108,6 +114,12 @@ def generar_qr_page(request: Request, user: str = Depends(login_required)):
 @app.get("/historial", response_class=HTMLResponse)
 def historial_page(request: Request, user: str = Depends(login_required)):
     return templates.TemplateResponse("historial.html", {"request": request})
+
+
+# 🔹 PÁGINA PARA VER REPORTES POR DÍA
+@app.get("/reportes-diarios", response_class=HTMLResponse)
+def reportes_diarios_page(request: Request, user: str = Depends(login_required)):
+    return templates.TemplateResponse("reportes_diarios.html", {"request": request})
 
 
 # 🔹 API PARA GENERAR CÓDIGO QR (protegido)
@@ -143,6 +155,75 @@ def generar_codigo_qr(user: str = Depends(login_required)):
         "codigo_qr": codigo_qr,
         "qr_image": f"data:image/png;base64,{img_base64}",
         "mensaje": f"Código QR generado. Imprime o captura esta imagen y pégala en tu vehículo."
+    }
+
+
+# 🔹 LISTAR TODOS LOS VEHÍCULOS REGISTRADOS (protegido)
+@app.get("/api/list-vehicles")
+def list_vehicles(db: Session = Depends(get_db), user: str = Depends(login_required)):
+    """Lista todos los vehículos registrados con sus códigos QR"""
+    vehicles = db.query(Vehicle).order_by(Vehicle.created_at.desc()).all()
+    
+    if not vehicles:
+        return {
+            "total_vehiculos": 0,
+            "vehicles": [],
+            "mensaje": "No hay vehículos registrados"
+        }
+    
+    return {
+        "total_vehiculos": len(vehicles),
+        "vehicles": [
+            {
+                "id": v.id,
+                "codigo_qr": v.code,
+                "nombre": v.name,
+                "fecha_registro": to_bogota(v.created_at).strftime("%d/%m/%Y %H:%M:%S")
+            }
+            for v in vehicles
+        ]
+    }
+
+
+# 🔹 REGENERAR QR PARA UN VEHÍCULO EXISTENTE (Sin perder historial)
+@app.post("/api/regenerar-qr/{vehicle_code}")
+def regenerar_qr_existente(vehicle_code: str, db: Session = Depends(get_db), user: str = Depends(login_required)):
+    """Regenera la imagen QR para un vehículo existente (mantiene el mismo código y historial)"""
+    import qrcode
+    from io import BytesIO
+    import base64
+    
+    # Limpiar y preparar el código
+    vehicle_code = vehicle_code.strip()
+    
+    # Verificar que el vehículo existe (case-insensitive)
+    vehicle = db.query(Vehicle).filter(Vehicle.code.ilike(vehicle_code)).first()
+    if not vehicle:
+        raise HTTPException(status_code=404, detail=f"Vehículo no encontrado: {vehicle_code}")
+    
+    # Regenerar la imagen QR con el MISMO código
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(vehicle_code)  # ← MISMO CÓDIGO
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convertir a base64
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_base64 = base64.b64encode(buffered.getvalue()).decode()
+    
+    return {
+        "success": True,
+        "codigo_qr": vehicle_code,
+        "nombre_vehiculo": vehicle.name,
+        "qr_image": f"data:image/png;base64,{img_base64}",
+        "mensaje": f"Código QR regenerado para {vehicle.name}. Imprime y reemplaza el papel dañado. ¡El historial se mantiene intacto!"
     }
 
 
@@ -221,6 +302,10 @@ def save_location(vehicle_code: str, data: LocationCreate, db: Session = Depends
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehículo no encontrado")
     
+    # Log para debug
+    import sys
+    print(f"[DEBUG] save_location recibido: lat={data.latitude}, lon={data.longitude}, origen={data.origen}", file=sys.stderr)
+    
     location = Location(
         vehicle_id=vehicle.id,
         latitude=data.latitude,
@@ -232,6 +317,7 @@ def save_location(vehicle_code: str, data: LocationCreate, db: Session = Depends
         nivel_gasolina=data.nivel_gasolina,
         kilometraje=data.kilometraje,
         observaciones=data.observaciones,
+        direccion_completa=data.direccion_completa,
     )
     
     db.add(location)
@@ -321,6 +407,7 @@ def get_historial_por_nombre(vehicle_name: str, db: Session = Depends(get_db)):
                 "nivel_gasolina": loc.nivel_gasolina,
                 "kilometraje": loc.kilometraje,
                 "observaciones": loc.observaciones,
+                "direccion_completa": loc.direccion_completa,
             }
             for loc in locations
         ]
@@ -369,6 +456,7 @@ def get_historial_por_codigo(vehicle_code: str, db: Session = Depends(get_db)):
                 "nivel_gasolina": loc.nivel_gasolina,
                 "kilometraje": loc.kilometraje,
                 "observaciones": loc.observaciones,
+                "direccion_completa": loc.direccion_completa,
             }
             for loc in locations
         ]
@@ -529,3 +617,510 @@ def dashboard(request: Request, vehicle_code: str, db: Session = Depends(get_db)
         "vehicle": vehicle,
         "last_location": last_location
     })
+
+
+# 🔹 VERIFICAR SI UN VEHÍCULO FUE ESCANEADO HOY
+@app.get("/api/check-vehicle-scan/{vehicle_code}")
+def check_vehicle_scan(vehicle_code: str, db: Session = Depends(get_db), user: str = Depends(login_required)):
+    """
+    Verifica si un vehículo fue escaneado HOY
+    - Busca por código interno (veh_xxx) O por placa (NHQ928, etc)
+    - Si fue escaneado: Retorna info del escaneo
+    - Si NO fue escaneado: Permite registrarlo como no escaneado
+    """
+    from datetime import datetime, timedelta
+    
+    # Busca por código interno O por placa (name)
+    vehicle = db.query(Vehicle).filter(
+        (Vehicle.code == vehicle_code) | (Vehicle.name == vehicle_code)
+    ).first()
+    
+    if not vehicle:
+        return {
+            "found": False,
+            "message": "Vehículo no encontrado"
+        }
+    
+    # Buscar si hay escaneo HOY
+    today = datetime.now(tz=bogota_tz).date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    today_scan = db.query(Location)\
+        .filter(Location.vehicle_id == vehicle.id)\
+        .filter(Location.created_at >= today_start)\
+        .filter(Location.created_at <= today_end)\
+        .order_by(Location.created_at.desc())\
+        .first()
+    
+    if today_scan:
+        # SÍ FUE ESCANEADO HOY
+        return {
+            "found": True,
+            "was_scanned": True,
+            "vehicle_code": vehicle.code,
+            "vehicle_name": vehicle.name,
+            "scanned_at": to_bogota(today_scan.created_at).strftime("%H:%M:%S"),
+            "location": today_scan.direccion_completa or "Ubicación no disponible",
+            "responsable": today_scan.responsable_origen or "No registrado",
+            "message": f"✅ {vehicle.name} fue escaneado a las {to_bogota(today_scan.created_at).strftime('%H:%M:%S')}"
+        }
+    else:
+        # NO FUE ESCANEADO HOY
+        return {
+            "found": True,
+            "was_scanned": False,
+            "vehicle_code": vehicle.code,
+            "vehicle_name": vehicle.name,
+            "message": f"❌ {vehicle.name} NO fue escaneado hoy",
+            "can_mark_unscanned": True
+        }
+
+
+# 🔹 MARCAR VEHÍCULO COMO NO ESCANEADO
+@app.post("/api/mark-unscanned/{vehicle_code}")
+def mark_vehicle_unscanned(
+    vehicle_code: str,
+    data: UnscannedVehicleCreate,
+    db: Session = Depends(get_db),
+    user: str = Depends(login_required)
+):
+    """
+    Registra que un vehículo NO fue escaneado por su placa (name)
+    - responsable_esperado: Quién DEBERÍA haber escaneado (nombre del movilizador)
+    - motivo: Razón por la que no fue escaneado (opcional)
+    """
+    vehicle = db.query(Vehicle).filter(Vehicle.name == vehicle_code).first()
+    
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+    
+    # Crear registro de no escaneado
+    unscanned = UnscannedVehicle(
+        vehicle_id=vehicle.id,
+        responsable_esperado=data.responsable_esperado,
+        verificado_por=user,  # Quién registra (persona en puerta)
+        motivo=data.motivo
+    )
+    
+    db.add(unscanned)
+    db.commit()
+    db.refresh(unscanned)
+    
+    return {
+        "success": True,
+        "message": f"✗ {vehicle.name} registrado como NO escaneado",
+        "vehicle_code": vehicle.code,
+        "vehicle_name": vehicle.name,
+        "responsable_esperado": data.responsable_esperado,
+        "verified_by": user,
+        "timestamp": to_bogota(unscanned.created_at).strftime("%d/%m/%Y %H:%M:%S")
+    }
+
+
+# 🔹 OBTENER LISTA DE VEHÍCULOS NO ESCANEADOS HOY
+@app.get("/api/unscanned-today")
+def get_unscanned_today(db: Session = Depends(get_db), user: str = Depends(login_required)):
+    """
+    Retorna lista de vehículos que NO fueron escaneados hoy
+    Útil para REPORTE de incumplimientos
+    """
+    from datetime import datetime
+    
+    today = datetime.now(tz=bogota_tz).date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    # Vehículos no escaneados HOY
+    unscanned_today = db.query(UnscannedVehicle)\
+        .join(Vehicle)\
+        .filter(UnscannedVehicle.created_at >= today_start)\
+        .filter(UnscannedVehicle.created_at <= today_end)\
+        .order_by(UnscannedVehicle.created_at.desc())\
+        .all()
+    
+    # Total de vehículos registrados
+    total_vehicles = db.query(Vehicle).count()
+    
+    # Vehículos escaneados hoy
+    scanned_today = db.query(Vehicle).join(Location)\
+        .filter(Location.created_at >= today_start)\
+        .filter(Location.created_at <= today_end)\
+        .distinct()\
+        .count()
+    
+    return {
+        "fecha": str(today),
+        "total_vehiculos": total_vehicles,
+        "escaneados_hoy": scanned_today,
+        "no_escaneados_hoy": len(unscanned_today),
+        "tasa_cumplimiento": round((scanned_today / total_vehicles * 100), 2) if total_vehicles > 0 else 0,
+        "no_escaneados": [
+            {
+                "id": u.id,
+                "vehicle_code": u.vehicle.code,
+                "vehicle_name": u.vehicle.name,
+                "responsable_esperado": u.responsable_esperado,
+                "verificado_por": u.verificado_por,
+                "motivo": u.motivo,
+                "registrado_a": to_bogota(u.created_at).strftime("%H:%M:%S")
+            }
+            for u in unscanned_today
+        ]
+    }
+
+
+# 🔹 OBTENER REPORTE COMPLETO DEL DÍA
+@app.get("/api/report-daily")
+def get_daily_report(db: Session = Depends(get_db), user: str = Depends(login_required)):
+    """
+    Reporte completo del día: Qué vehículos salieron, cuáles no fueron escaneados, etc.
+    """
+    from datetime import datetime
+    
+    today = datetime.now(tz=bogota_tz).date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    # Todos los vehículos
+    all_vehicles = db.query(Vehicle).all()
+    
+    scanned_list = []
+    unscanned_list = []
+    
+    for vehicle in all_vehicles:
+        # Buscar escaneo de hoy
+        today_scan = db.query(Location)\
+            .filter(Location.vehicle_id == vehicle.id)\
+            .filter(Location.created_at >= today_start)\
+            .filter(Location.created_at <= today_end)\
+            .first()
+        
+        if today_scan:
+            scanned_list.append({
+                "code": vehicle.code,
+                "name": vehicle.name,
+                "status": "escaneado",
+                "hora": to_bogota(today_scan.created_at).strftime("%H:%M:%S"),
+                "responsable": today_scan.responsable_origen or "No registrado",
+                "ubicacion": today_scan.direccion_completa or "No disponible"
+            })
+        else:
+            # Buscar si fue registrado como NO escaneado
+            unscanned_record = db.query(UnscannedVehicle)\
+                .filter(UnscannedVehicle.vehicle_id == vehicle.id)\
+                .filter(UnscannedVehicle.created_at >= today_start)\
+                .filter(UnscannedVehicle.created_at <= today_end)\
+                .first()
+            
+            if unscanned_record:
+                unscanned_list.append({
+                    "code": vehicle.code,
+                    "name": vehicle.name,
+                    "status": "no_escaneado",
+                    "responsable_esperado": unscanned_record.responsable_esperado,
+                    "verificado_por": unscanned_record.verificado_por,
+                    "motivo": unscanned_record.motivo,
+                    "registrado_a": to_bogota(unscanned_record.created_at).strftime("%H:%M:%S")
+                })
+    
+    return {
+        "fecha": str(today),
+        "resumen": {
+            "total_vehiculos": len(all_vehicles),
+            "escaneados": len(scanned_list),
+            "no_escaneados": len(unscanned_list),
+            "sin_registro": len(all_vehicles) - len(scanned_list) - len(unscanned_list),
+            "tasa_cumplimiento": round((len(scanned_list) / len(all_vehicles) * 100), 2) if len(all_vehicles) > 0 else 0
+        },
+        "escaneados": scanned_list,
+        "no_escaneados": unscanned_list
+    }
+
+
+# 🔹 BUSCAR VEHÍCULOS NO ESCANEADOS CON FILTROS
+@app.get("/api/search-unscanned")
+def search_unscanned(
+    responsable: str = None,
+    vehicle_code: str = None,
+    vehicle_name: str = None,
+    db: Session = Depends(get_db),
+    user: str = Depends(login_required)
+):
+    """
+    Busca vehículos NO escaneados hoy con filtros:
+    - responsable: Nombre del responsable (búsqueda parcial)
+    - vehicle_code: Código del vehículo
+    - vehicle_name: Nombre/placa del vehículo (búsqueda parcial)
+    """
+    from datetime import datetime
+    
+    today = datetime.now(tz=bogota_tz).date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    query = db.query(UnscannedVehicle).join(Vehicle)\
+        .filter(UnscannedVehicle.created_at >= today_start)\
+        .filter(UnscannedVehicle.created_at <= today_end)
+    
+    # Aplicar filtros
+    if responsable:
+        query = query.filter(UnscannedVehicle.responsable_esperado.ilike(f"%{responsable}%"))
+    
+    if vehicle_code:
+        query = query.filter(Vehicle.code.ilike(f"%{vehicle_code}%"))
+    
+    if vehicle_name:
+        query = query.filter(Vehicle.name.ilike(f"%{vehicle_name}%"))
+    
+    results = query.order_by(UnscannedVehicle.created_at.desc()).all()
+    
+    return {
+        "total": len(results),
+        "filtros_aplicados": {
+            "responsable": responsable,
+            "vehicle_code": vehicle_code,
+            "vehicle_name": vehicle_name
+        },
+        "resultados": [
+            {
+                "id": u.id,
+                "vehicle_code": u.vehicle.code,
+                "vehicle_name": u.vehicle.name,
+                "responsable_esperado": u.responsable_esperado,
+                "verificado_por": u.verificado_por,
+                "motivo": u.motivo,
+                "registrado_a": to_bogota(u.created_at).strftime("%H:%M:%S")
+            }
+            for u in results
+        ]
+    }
+
+
+# 🔹 EXPORTAR A EXCEL - VEHÍCULOS NO ESCANEADOS
+@app.get("/api/export-unscanned-excel")
+def export_unscanned_excel(
+    db: Session = Depends(get_db),
+    user: str = Depends(login_required)
+):
+    """
+    Exporta a Excel los vehículos NO escaneados de hoy
+    """
+    from datetime import datetime
+    import tempfile
+    import os
+    
+    today = datetime.now(tz=bogota_tz).date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    # Obtener datos
+    unscanned = db.query(UnscannedVehicle).join(Vehicle)\
+        .filter(UnscannedVehicle.created_at >= today_start)\
+        .filter(UnscannedVehicle.created_at <= today_end)\
+        .order_by(UnscannedVehicle.created_at.desc())\
+        .all()
+    
+    # Crear DataFrame
+    data = []
+    for u in unscanned:
+        data.append({
+            "Placa/Código": u.vehicle.code,
+            "Nombre Vehículo": u.vehicle.name,
+            "Responsable Esperado": u.responsable_esperado or "No registrado",
+            "Verificado Por": u.verificado_por or "No registrado",
+            "Motivo": u.motivo or "-",
+            "Hora Registro": to_bogota(u.created_at).strftime("%H:%M:%S")
+        })
+    
+    df = pd.DataFrame(data)
+    
+    # Crear archivo temporal
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    df.to_excel(temp_file.name, index=False, sheet_name="No Escaneados")
+    temp_file.close()
+    
+    # Retornar archivo
+    return FileResponse(
+        temp_file.name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=f"no_escaneados_{today}.xlsx"
+    )
+
+
+# 🔹 EXPORTAR A EXCEL - TODOS (ESCANEADOS + NO ESCANEADOS)
+@app.get("/api/export-daily-report-excel")
+def export_daily_report_excel(
+    db: Session = Depends(get_db),
+    user: str = Depends(login_required)
+):
+    """
+    Exporta completo el reporte del día a Excel
+    """
+    from datetime import datetime
+    import tempfile
+    
+    today = datetime.now(tz=bogota_tz).date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    all_vehicles = db.query(Vehicle).all()
+    
+    data = []
+    
+    for vehicle in all_vehicles:
+        # Buscar escaneo de hoy
+        today_scan = db.query(Location)\
+            .filter(Location.vehicle_id == vehicle.id)\
+            .filter(Location.created_at >= today_start)\
+            .filter(Location.created_at <= today_end)\
+            .first()
+        
+        if today_scan:
+            data.append({
+                "Placa/Código": vehicle.code,
+                "Nombre": vehicle.name,
+                "Estado": "✅ ESCANEADO",
+                "Hora": to_bogota(today_scan.created_at).strftime("%H:%M:%S"),
+                "Responsable": today_scan.responsable_origen or "No registrado",
+                "Ubicación": today_scan.direccion_completa or "No disponible",
+                "Motivo": "-"
+            })
+        else:
+            # Buscar si fue registrado como NO escaneado
+            unscanned_record = db.query(UnscannedVehicle)\
+                .filter(UnscannedVehicle.vehicle_id == vehicle.id)\
+                .filter(UnscannedVehicle.created_at >= today_start)\
+                .filter(UnscannedVehicle.created_at <= today_end)\
+                .first()
+            
+            if unscanned_record:
+                data.append({
+                    "Placa/Código": vehicle.code,
+                    "Nombre": vehicle.name,
+                    "Estado": "❌ NO ESCANEADO",
+                    "Hora": to_bogota(unscanned_record.created_at).strftime("%H:%M:%S"),
+                    "Responsable": unscanned_record.responsable_esperado or "No registrado",
+                    "Ubicación": "-",
+                    "Motivo": unscanned_record.motivo or "-"
+                })
+            else:
+                data.append({
+                    "Placa/Código": vehicle.code,
+                    "Nombre": vehicle.name,
+                    "Estado": "⚠️ SIN REGISTRO",
+                    "Hora": "-",
+                    "Responsable": "-",
+                    "Ubicación": "-",
+                    "Motivo": "-"
+                })
+    
+    df = pd.DataFrame(data)
+    
+    # Crear archivo temporal
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    df.to_excel(temp_file.name, index=False, sheet_name="Reporte Diario")
+    temp_file.close()
+    
+    # Retornar archivo
+    return FileResponse(
+        temp_file.name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=f"reporte_diario_{today}.xlsx"
+    )
+
+
+# 🔹 OBTENER ESCANEOS POR FECHA ESPECÍFICA
+@app.get("/api/escaneos-por-fecha")
+def get_escaneos_por_fecha(
+    fecha: str,  # Formato: YYYY-MM-DD
+    db: Session = Depends(get_db),
+    user: str = Depends(login_required)
+):
+    """
+    Obtiene todos los escaneos de una fecha específica con la información del vehículo
+    Retorna: lista de vehículos escaneados ese día con placa y responsables
+    """
+    from datetime import datetime as dt
+    
+    try:
+        # Parsear la fecha
+        fecha_obj = dt.strptime(fecha, "%Y-%m-%d").date()
+        
+        # Crear rango de tiempo para ese día (00:00:00 a 23:59:59)
+        hora_inicio = dt.combine(fecha_obj, dt.min.time()).replace(tzinfo=bogota_tz)
+        hora_fin = dt.combine(fecha_obj, dt.max.time()).replace(tzinfo=bogota_tz)
+        
+        # Obtener todos los vehículos
+        todos_vehiculos = db.query(Vehicle).all()
+        
+        escaneos = []
+        no_escaneados = []
+        
+        for vehiculo in todos_vehiculos:
+            # Buscar si el vehículo fue escaneado ese día
+            escaneo_dia = (
+                db.query(Location)
+                .filter(Location.vehicle_id == vehiculo.id)
+                .filter(Location.created_at >= hora_inicio)
+                .filter(Location.created_at <= hora_fin)
+                .first()
+            )
+            
+            if escaneo_dia:
+                escaneos.append({
+                    "id": escaneo_dia.id,
+                    "placa": vehiculo.code,
+                    "nombre_vehiculo": vehiculo.name,
+                    "hora_escaneo": to_bogota(escaneo_dia.created_at).strftime("%d/%m/%Y %H:%M:%S"),
+                    "responsable_origen": escaneo_dia.responsable_origen or "No registrado",
+                    "responsable_destino": escaneo_dia.responsable_destino or "No registrado",
+                    "origen": escaneo_dia.origen or "-",
+                    "destino": escaneo_dia.destino or "-",
+                    "nivel_gasolina": escaneo_dia.nivel_gasolina or "-",
+                    "kilometraje": escaneo_dia.kilometraje or "-",
+                    "observaciones": escaneo_dia.observaciones or "-",
+                    "direccion": escaneo_dia.direccion_completa or "No disponible",
+                    "latitude": escaneo_dia.latitude,
+                    "longitude": escaneo_dia.longitude
+                })
+            else:
+                # Verificar si fue registrado como NO escaneado
+                no_escaneo = (
+                    db.query(UnscannedVehicle)
+                    .filter(UnscannedVehicle.vehicle_id == vehiculo.id)
+                    .filter(UnscannedVehicle.created_at >= hora_inicio)
+                    .filter(UnscannedVehicle.created_at <= hora_fin)
+                    .first()
+                )
+                
+                if no_escaneo:
+                    no_escaneados.append({
+                        "id": no_escaneo.id,
+                        "placa": vehiculo.code,
+                        "nombre_vehiculo": vehiculo.name,
+                        "responsable_esperado": no_escaneo.responsable_esperado or "-",
+                        "verificado_por": no_escaneo.verificado_por or "-",
+                        "motivo": no_escaneo.motivo or "No especificado",
+                        "hora_registro": to_bogota(no_escaneo.created_at).strftime("%d/%m/%Y %H:%M:%S")
+                    })
+        
+        return {
+            "success": True,
+            "fecha": fecha,
+            "resumen": {
+                "total_vehiculos": len(todos_vehiculos),
+                "escaneados": len(escaneos),
+                "no_escaneados": len(no_escaneados),
+                "sin_registro": len(todos_vehiculos) - len(escaneos) - len(no_escaneados),
+                "tasa_cumplimiento": round((len(escaneos) / len(todos_vehiculos) * 100), 2) if len(todos_vehiculos) > 0 else 0
+            },
+            "escaneos": escaneos,
+            "no_escaneados": no_escaneados
+        }
+    
+    except ValueError:
+        return {
+            "success": False,
+            "error": "Formato de fecha inválido. Use YYYY-MM-DD (ej: 2026-03-27)"
+        }

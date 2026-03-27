@@ -337,6 +337,33 @@
             background: #5a3a7a;
             transform: translateY(-2px);
         }
+
+        .vehiculo-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .vehiculo-item:hover {
+            background: #f5f5f5;
+        }
+
+        .vehiculo-item:last-child {
+            border-bottom: none;
+        }
+
+        .vehiculo-codigo {
+            font-family: monospace;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .vehiculo-nombre {
+            color: #333;
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 <body>
@@ -362,7 +389,8 @@
         
        
         <div class="button-group">
-            <button class="btn-primary" onclick="generarQRAutomatico()">✨ Generar QR Automático</button>
+            <button class="btn-primary" onclick="mostrarSeccion('generar')">✨ Generar QR Automático</button>
+            <button class="btn-primary" onclick="mostrarSeccion('regenerar')" style="background: #f59e0b;">🔄 Regenerar QR Existente</button>
             <button class="btn-secondary" onclick="window.location.href='/'">← Volver a Escanear</button>
         </div>
         
@@ -376,6 +404,25 @@
                     <input type="text" id="codigo-historial" placeholder="Ej: veh_a1b2c3d4" style="flex: 1;">
                     <button class="btn-primary" onclick="buscarHistorial()" style="flex: 0 0 auto; width: auto; padding: 12px 20px;">Ver Historial</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- NUEVA SECCIÓN: REGENERAR QR EXISTENTE -->
+        <div id="seccion-regenerar" class="section" style="display: none; background: #fff8e1; border-color: #f59e0b;">
+            <h2 style="color: #f59e0b;">🔄 Regenerar QR Existente</h2>
+            <p>¿Se dañó tu código QR? Regenera la imagen sin perder el historial de ubicaciones.</p>
+            
+            <div class="input-group">
+                <label for="codigo-regenerar">Código del Vehículo (ej: veh_cc16182a):</label>
+                <input type="text" id="codigo-regenerar" placeholder="Ej: veh_cc16182a">
+            </div>
+            
+            <div class="button-group">
+                <button type="button" class="btn-primary" onclick="handleRegenerarQR()" style="background: #f59e0b;">🔄 Regenerar QR</button>
+            </div>
+            
+            <div class="info-box" style="background: #fef3c7; border-color: #f59e0b; color: #92400e;">
+                ℹ️ <strong>Importante:</strong> El código QR será el MISMO. Tu vehículo y su historial de ubicaciones se mantendrán intactos. Solo estás reimprimiendo la imagen porque el papel se dañó.
             </div>
         </div>
         
@@ -432,11 +479,11 @@
             </table>
             </div>
         </div>
-        
+
         <div id="status-message" class="status-message"></div>
         
         <div id="qr-result" class="qr-container">
-            <h2> ¡Código QR Generado!</h2>
+            <h2>✅ ¡Código QR Generado!</h2>
             
             <p>Código único del vehículo:</p>
             <div class="codigo-display" id="codigo-qr-display"></div>
@@ -444,11 +491,11 @@
             <p>Imagen del código QR:</p>
             <img id="qr-image" src="" alt="Código QR">
             
-            <button class="copy-button" onclick="copiarAlPortapapeles()"> Copiar Código</button>
-            <button class="download-button" onclick="descargarQR()">⬇ Descargar Imagen</button>
+            <button class="copy-button" onclick="copiarAlPortapapeles()">📋 Copiar Código</button>
+            <button class="download-button" onclick="descargarQR()">⬇️ Descargar Imagen</button>
             
             <div class="info-box">
-                 Puedes:
+                📌 Puedes:
                 <ul style="margin-top: 10px; margin-left: 20px;">
                     <li>Imprimir la imagen</li>
                     <li>Capturar screenshot en tu celular</li>
@@ -457,8 +504,8 @@
                 </ul>
             </div>
             
-            <button class="redirect-button" onclick="generarOtro()"> Generar Otro QR</button>
-            <button class="redirect-button" onclick="irAEscanear()"> Ir a Escanear</button>
+            <button class="redirect-button" onclick="generarOtro()">✨ Generar Otro QR</button>
+            <button class="redirect-button" onclick="irAEscanear()">📱 Ir a Escanear</button>
         </div>
     </div>
 
@@ -706,6 +753,149 @@
         function resetFiltrosQR() {
             document.getElementById("filtro-fecha-desde-qr").value = "";
             document.getElementById("filtro-fecha-hasta-qr").value = "";
+        }
+
+        // 🔹 MOSTRAR SECCIÓN (Generar o Regenerar)
+        function mostrarSeccion(tipo) {
+            // Ocultar ambas secciones
+            document.getElementById("qr-result").classList.remove("active");
+            document.getElementById("seccion-regenerar").style.display = "none";
+            document.getElementById("status-message").innerHTML = "";
+            
+            if (tipo === "generar") {
+                // Ir directamente a generar
+                generarQRAutomatico();
+            } else if (tipo === "regenerar") {
+                // Mostrar formulario para regenerar
+                document.getElementById("seccion-regenerar").style.display = "block";
+            }
+        }
+
+        // 🔹 REGENERAR QR EXISTENTE - FUNCIÓN SIMPLIFICADA
+        function handleRegenerarQR() {
+            const codigo = document.getElementById("codigo-regenerar").value.trim();
+            
+            if (!codigo) {
+                alert("❌ Por favor ingresa el código del vehículo");
+                return;
+            }
+            
+            const codigoLimpio = codigo.toLowerCase();
+            const statusDiv = document.getElementById("status-message");
+            
+            statusDiv.innerHTML = `⏳ Regenerando QR para: ${codigoLimpio}...`;
+            statusDiv.className = "status-message status-success";
+            statusDiv.style.display = "block";
+            
+            console.log("🔄 Enviando POST a /api/regenerar-qr/" + encodeURIComponent(codigoLimpio));
+            
+            fetch("/api/regenerar-qr/" + encodeURIComponent(codigoLimpio), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include"
+            })
+            .then(response => {
+                console.log("📊 Response status:", response.status);
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.detail || response.statusText);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("✅ Success:", data);
+                if (data.success) {
+                    document.getElementById("codigo-qr-display").textContent = data.codigo_qr;
+                    document.getElementById("qr-image").src = data.qr_image;
+                    document.getElementById("qr-result").classList.add("active");
+                    
+                    statusDiv.innerHTML = `✅ <strong>QR regenerado para: ${data.nombre_vehiculo}</strong><br>El historial se mantiene intacto. ¡Imprime y reemplaza el papel dañado!`;
+                    statusDiv.className = "status-message status-success";
+                    
+                    document.getElementById("codigo-regenerar").value = "";
+                } else {
+                    statusDiv.innerHTML = `❌ Error: ${data.error || "No se pudo regenerar"}`;
+                    statusDiv.className = "status-message status-error";
+                }
+            })
+            .catch(error => {
+                console.error("❌ Error detallado:", error);
+                statusDiv.innerHTML = `❌ Error: ${error.message}`;
+                statusDiv.className = "status-message status-error";
+            });
+        }
+
+        // 🔹 CARGAR LISTA DE VEHÍCULOS
+        async function cargarMisVehiculos() {
+            const container = document.getElementById("vehiculos-container");
+            const listDiv = document.getElementById("lista-vehiculos");
+            
+            container.innerHTML = "⏳ Cargando vehículos...";
+            listDiv.style.display = "block";
+            
+            try {
+                const response = await fetch("/api/list-vehicles", {
+                    credentials: "include"
+                });
+                
+                if (!response.ok) {
+                    throw new Error("Error al cargar vehículos");
+                }
+                
+                const data = await response.json();
+                
+                if (data.total_vehiculos === 0) {
+                    container.innerHTML = `<div style="padding: 15px; color: #666; text-align: center;">
+                        ℹ️ No tienes vehículos registrados aún.
+                    </div>`;
+                    return;
+                }
+                
+                container.innerHTML = "";
+                data.vehicles.forEach(vehicle => {
+                    const item = document.createElement("div");
+                    item.className = "vehiculo-item";
+                    item.innerHTML = `
+                        <div class="vehiculo-nombre"><strong>${vehicle.nombre}</strong></div>
+                        <div class="vehiculo-codigo">${vehicle.codigo_qr}</div>
+                        <div style="font-size: 11px; color: #999;">Registrado: ${vehicle.fecha_registro}</div>
+                    `;
+                    item.onclick = function() {
+                        seleccionarVehiculo(vehicle.codigo_qr, vehicle.nombre);
+                    };
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                container.innerHTML = `<div style="padding: 15px; color: red; text-align: center;">
+                    ❌ Error: ${error.message}
+                </div>`;
+            }
+        }
+
+        // Permitir presionar Enter para regenerar
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputReg = document.getElementById("codigo-regenerar");
+            if (inputReg) {
+                inputReg.addEventListener("keypress", function(e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleRegenerarQR();
+                    }
+                });
+            }
+        });
+
+        // 🔹 SELECCIONAR VEHÍCULO
+        function seleccionarVehiculo(codigo, nombre) {
+            document.getElementById("codigo-regenerar").value = codigo;
+            document.getElementById("lista-vehiculos").style.display = "none";
+            
+            // Mostrar mensaje de selección
+            const statusDiv = document.getElementById("status-message");
+            statusDiv.innerHTML = `✅ Vehículo seleccionado: <strong>${nombre}</strong> (${codigo})`;
+            statusDiv.className = "status-message status-success";
+            statusDiv.style.display = "block";
         }
         
     </script>
