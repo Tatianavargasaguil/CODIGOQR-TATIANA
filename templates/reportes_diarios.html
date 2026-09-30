@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#26377f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Carmax QR">
+    <link rel="manifest" href="/static/manifest-carmax-v5.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/carmax-pwa-v5-192.png">
+    <script src="/static/pwa.js?v=5" defer></script>
     <title>Reportes por Día - QR Tatiana</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
     <style>
@@ -467,7 +473,7 @@
         </div>
         
         <div class="header">
-            <h1>📅 Reportes por Día</h1>
+            <h1> Reportes por Día</h1>
             <p>Selecciona una fecha para ver todos los escaneos realizados ese día</p>
         </div>
         
@@ -478,8 +484,8 @@
                 <input type="date" id="fechaInput">
             </div>
             <div class="botones">
-                <button class="btn-consultar" onclick="consultarFecha()">🔍 Consultar</button>
-                <button class="btn-hoy" onclick="setearHoy()">📍 Hoy</button>
+                <button class="btn-consultar" onclick="consultarFecha()"> Consultar</button>
+                <button class="btn-hoy" onclick="setearHoy()"> Hoy</button>
             </div>
         </div>
         
@@ -542,7 +548,7 @@
             
             <!-- Acciones -->
             <div class="acciones">
-                <button class="exportar-btn" onclick="exportarExcel()">⬇️ Descargar Excel</button>
+                <button class="exportar-btn" onclick="exportarExcel()">⬇ Descargar Excel</button>
             </div>
         </div>
         
@@ -596,7 +602,7 @@
         function mostrarResultados(data) {
             // Mostrar resumen
             const resumenDiv = document.getElementById('resumen');
-            const { total_vehiculos, escaneados, no_escaneados, sin_registro, tasa_cumplimiento } = data.resumen;
+            const { total_vehiculos, escaneados, total_movimientos, no_escaneados, sin_registro, tasa_cumplimiento } = data.resumen;
             
             resumenDiv.innerHTML = `
                 <div class="stat-card">
@@ -604,8 +610,13 @@
                     <div class="numero">${total_vehiculos}</div>
                 </div>
                 <div class="stat-card escaneados">
-                    <h3>Escaneados</h3>
+                    <h3>Vehículos Escaneados</h3>
                     <div class="numero">${escaneados}</div>
+                </div>
+                <div class="stat-card escaneados">
+                    <h3>Total Movimientos</h3>
+                    <div class="numero" style="font-size: 1.8em;">${total_movimientos}</div>
+                    <small style="color: #666; font-size: 0.8em; margin-top: 5px;">escaneos realizados</small>
                 </div>
                 <div class="stat-card no-escaneados">
                     <h3>No Escaneados</h3>
@@ -626,10 +637,15 @@
             tablaEscaneos.innerHTML = '';
             
             if (data.escaneos.length > 0) {
-                data.escaneos.forEach(escaneo => {
+                data.escaneos.forEach((escaneo, index) => {
                     const fila = document.createElement('tr');
+                    // Si hay múltiples escaneos del mismo vehículo, mostrar indicador visual
+                    const indicador = escaneo.total_escaneos > 1 
+                        ? ` <span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-weight: bold; font-size: 0.85em;">${escaneo.num_escaneo}/${escaneo.total_escaneos}</span>`
+                        : '';
+                    
                     fila.innerHTML = `
-                        <td><strong>${escaneo.placa}</strong></td>
+                        <td><strong>${escaneo.placa}</strong>${indicador}</td>
                         <td>${escaneo.nombre_vehiculo}</td>
                         <td>${escaneo.hora_escaneo}</td>
                         <td>${escaneo.responsable_origen}</td>
@@ -716,28 +732,32 @@
             datosExcel.push([]);
             datosExcel.push(['RESUMEN']);
             datosExcel.push(['Total Vehículos', data.resumen.total_vehiculos]);
-            datosExcel.push(['Escaneados', data.resumen.escaneados]);
+            datosExcel.push(['Vehículos Escaneados', data.resumen.escaneados]);
+            datosExcel.push(['Total Movimientos/Escaneos', data.resumen.total_movimientos]);
             datosExcel.push(['No Escaneados', data.resumen.no_escaneados]);
             datosExcel.push(['Sin Registro', data.resumen.sin_registro]);
             datosExcel.push(['Tasa Cumplimiento %', data.resumen.tasa_cumplimiento]);
             datosExcel.push([]);
             
             // Escaneos
-            datosExcel.push(['VEHÍCULOS ESCANEADOS']);
-            datosExcel.push(['Placa', 'Nombre', 'Fecha y Hora', 'Responsable Origen', 'Responsable Destino', 'Origen', 'Destino', 'Gasolina', 'Kilometraje', 'Observaciones']);
+            datosExcel.push(['VEHÍCULOS ESCANEADOS (TODOS LOS MOVIMIENTOS)']);
+            datosExcel.push(['Placa', 'Nombre', 'Fecha y Hora', 'Escaneo #', 'Total Escaneos', 'Responsable Origen', 'Responsable Destino', 'Origen', 'Destino', 'Gasolina', 'Kilometraje', 'Observaciones', 'Dirección']);
             
             data.escaneos.forEach(escaneo => {
                 datosExcel.push([
                     escaneo.placa,
                     escaneo.nombre_vehiculo,
                     escaneo.hora_escaneo,
+                    escaneo.num_escaneo,
+                    escaneo.total_escaneos,
                     escaneo.responsable_origen,
                     escaneo.responsable_destino,
                     escaneo.origen,
                     escaneo.destino,
                     escaneo.nivel_gasolina,
                     escaneo.kilometraje,
-                    escaneo.observaciones
+                    escaneo.observaciones,
+                    escaneo.direccion
                 ]);
             });
             

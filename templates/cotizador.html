@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#26377f">
+    <link rel="manifest" href="/static/manifest-carmax-v5.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/carmax-pwa-v5-192.png">
+    <script src="/static/pwa.js?v=13" defer></script>
+    <title>Cotizador Carmax</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            color: #071955;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 24px;
+        }
+        .wrap {
+            max-width: 1080px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            padding: 28px;
+            box-shadow: 0 12px 34px rgba(0,0,0,.16);
+        }
+        .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }
+        .topbar a { color: #4f63d9; font-weight: 700; text-decoration: none; }
+        h1 { margin: 0 0 8px; color: #26377f; font-size: 30px; }
+        h2 { margin: 22px 0 14px; color: #003d67; font-size: 22px; }
+        .eyebrow { color: #d39a00; font-weight: 800; font-size: 12px; text-transform: uppercase; }
+        .steps { display: flex; gap: 0; margin: 20px 0; }
+        .steps span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #e9eef8; color: #26377f; font-weight: 800; border: 2px solid #cfd6e9; }
+        .steps span.active { background: #009fe3; color: white; border-color: #009fe3; }
+        .steps span + span { margin-left: -2px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        label { display: block; font-weight: 800; font-size: 13px; color: #0b1b66; }
+        input, select {
+            width: 100%;
+            border: 0;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 12px 2px;
+            font-size: 16px;
+            color: #061552;
+            outline: none;
+            background: transparent;
+            text-transform: uppercase;
+        }
+        .actions { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 14px 24px;
+            font-weight: 900;
+            cursor: pointer;
+            background: #ffc72c;
+            color: #071955;
+            font-size: 15px;
+        }
+        .secondary { background: white; border: 1px solid #009fe3; color: #009fe3; }
+        .result {
+            margin-top: 28px;
+            background: #26377f;
+            color: white;
+            border-radius: 8px;
+            padding: 24px;
+            display: none;
+        }
+        .result h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; }
+        .offer { color: #ffc72c; font-size: 32px; font-weight: 900; margin-bottom: 18px; }
+        .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+        .card { border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 14px; background: rgba(255,255,255,.08); }
+        .card small { display: block; opacity: .86; margin-bottom: 8px; }
+        .card strong { font-size: 18px; }
+        .method { border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 16px; margin-top: 16px; font-weight: 700; }
+        .notes { margin-top: 14px; display: grid; gap: 10px; }
+        .note { background: rgba(255,255,255,.16); border-left: 4px solid #ffc72c; border-radius: 6px; padding: 12px; font-weight: 700; }
+        .director { background: #12090b; color: #fff; border: 3px solid #dc2626; }
+        .director .offer { color: #ff3b30; }
+        .modal { position: fixed; inset: 0; background: rgba(7, 12, 45, .72); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10; }
+        .modal-box { width: min(1120px, 96vw); max-height: 86vh; overflow: auto; background: white; border-radius: 8px; color: #071955; }
+        .modal-head { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+        .modal-body { padding: 16px 20px 20px; }
+        .close { border-radius: 50%; width: 36px; height: 36px; padding: 0; background: #eef2ff; color: #26377f; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 11px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+        th { color: #0b1b66; font-size: 12px; }
+        .source-link { color: #009fe3; font-weight: 800; text-decoration: none; white-space: nowrap; }
+        .source-link:hover { text-decoration: underline; }
+        .search { margin-bottom: 14px; text-transform: none; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; }
+        .error { margin-top: 18px; display: none; background: #fff1f2; color: #991b1b; padding: 16px; border-radius: 8px; font-weight: 700; }
+        @media (max-width: 760px) {
+            body { padding: 10px; }
+            .wrap { padding: 18px; }
+            .grid, .cards { grid-template-columns: 1fr; }
+            h1 { font-size: 24px; }
+            .offer { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="wrap">
+        <div class="topbar">
+            <div>Usuario: <strong>{{ request.session.user }}</strong></div>
+            <div><a href="/">Escanear QR</a> &nbsp; <a href="/logout">Cerrar sesion</a></div>
+        </div>
+
+        <p class="eyebrow">Cotizador Carmax</p>
+        <h1>Calcula una oferta estimada para tu carro</h1>
+        <div class="steps"><span class="active">1</span><span>2</span><span>3</span></div>
+
+        <form id="quoteForm">
+            <section data-step="1">
+                <h2>Cuentanos que carro tienes</h2>
+                <div class="grid">
+                    <label>Marca<input name="brand" list="brandOptions" required></label>
+                    <label>Linea / referencia<input name="line" required></label>
+                    <label>Modelo<select name="year" required></select></label>
+                    <label>Version / acabado<input name="version"></label>
+                </div>
+                <div class="actions"><button type="button" data-next>Siguiente</button></div>
+            </section>
+            <section data-step="2" hidden>
+                <h2>Ahora cuentanos sus caracteristicas</h2>
+                <div class="grid">
+                    <label>Cilindraje<input name="engine" inputmode="numeric"></label>
+                    <label>Aire acondicionado<select name="air"><option>Si</option><option>No</option></select></label>
+                    <label>Transmision<select name="transmission"><option>Automatica</option><option>Mecanica</option></select></label>
+                    <label>Puertas<select name="doors"><option>5</option><option>4</option><option>3</option><option>2</option></select></label>
+                    <label>Traccion<select name="traction"><option>4x2</option><option>4x4</option><option>AWD</option></select></label>
+                    <label>Combustible<select name="fuel"><option>Gasolina</option><option>Diesel</option><option>Hibrido</option><option>Electrico</option></select></label>
+                    <label>Kilometraje<input name="mileage" inputmode="numeric" required></label>
+                    <label>Placa<input name="plate" maxlength="10"></label>
+                </div>
+                <div class="actions"><button type="button" class="secondary" data-back>Atras</button><button type="button" data-next>Siguiente</button></div>
+            </section>
+            <section data-step="3" hidden>
+                <h2>Ciudad de referencia</h2>
+                <div class="grid"><label>Ciudad<select name="city"><option>Bogota</option><option>Medellin</option><option>Cali</option><option>Barranquilla</option></select></label></div>
+                <div class="actions"><button type="button" class="secondary" data-back>Atras</button><button type="submit">Calcular oferta</button></div>
+            </section>
+        </form>
+        <div id="error" class="error"></div>
+        <section id="result" class="result"></section>
+    </main>
+
+    <div id="modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <div><strong id="modalKind"></strong><h2 id="modalTitle" style="margin:4px 0 0"></h2></div>
+                <button class="close" onclick="closeModal()">X</button>
+            </div>
+            <div class="modal-body">
+                <input id="tableSearch" class="search" placeholder="Buscar en la tabla">
+                <table>
+                    <thead><tr><th>PLATAFORMA</th><th>VEHICULO</th><th>ANO</th><th>PRECIO</th><th>CIUDAD</th><th>VENDEDOR</th><th>URL</th></tr></thead>
+                    <tbody id="modalRows"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <datalist id="brandOptions"></datalist>
+
+    <script>
+        const form = document.getElementById('quoteForm');
+        const steps = [...document.querySelectorAll('[data-step]')];
+        const pills = [...document.querySelectorAll('.steps span')];
+        const result = document.getElementById('result');
+        const errorBox = document.getElementById('error');
+        let currentStep = 1;
+        let lastPayload = null;
+        let modalItems = [];
+
+        function money(value) {
+            return '$ ' + Number(value || 0).toLocaleString('es-CO');
+        }
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+        }
+        function sourceUrl(item) {
+            if (item.url && /^https?:\/\//i.test(item.url)) return item.url;
+            const query = [
+                item.vehicle,
+                item.year,
+                item.price_formatted || money(item.price),
+                item.city,
+                item.seller,
+                'Colombia'
+            ].filter(Boolean).join(' ');
+            return 'https://www.google.com/search?q=' + encodeURIComponent(query);
+        }
+        function showStep(step) {
+            currentStep = step;
+            steps.forEach(s => s.hidden = Number(s.dataset.step) !== step);
+            pills.forEach((p, i) => p.classList.toggle('active', i < step));
+        }
+        document.querySelectorAll('[data-next]').forEach(btn => btn.onclick = () => showStep(Math.min(3, currentStep + 1)));
+        document.querySelectorAll('[data-back]').forEach(btn => btn.onclick = () => showStep(Math.max(1, currentStep - 1)));
+
+        async function initOptions() {
+            const res = await fetch('/api/cotizador/options', {credentials:'include'});
+            const data = await res.json();
+            const brands = Object.keys(data.options || {});
+            document.getElementById('brandOptions').innerHTML = brands.map(b => `<option value="${b}">`).join('');
+            const yearSelect = form.elements.year;
+            yearSelect.innerHTML = (data.years || []).map(y => `<option value="${y}">${y}</option>`).join('');
+        }
+
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            errorBox.style.display = 'none';
+            result.style.display = 'block';
+            result.className = 'result';
+            result.innerHTML = '<strong>Calculando...</strong>';
+            const fd = new FormData(form);
+            lastPayload = {
+                brand: fd.get('brand'),
+                line: fd.get('line'),
+                version: fd.get('version'),
+                year: fd.get('year'),
+                mileage: fd.get('mileage'),
+                features: {
+                    engine: fd.get('engine'), air: fd.get('air'), transmission: fd.get('transmission'),
+                    doors: fd.get('doors'), traction: fd.get('traction'), fuel: fd.get('fuel'),
+                    plate: fd.get('plate'), city: fd.get('city')
+                }
+            };
+            try {
+                const res = await fetch('/api/cotizador/quote', {
+                    method: 'POST', credentials: 'include',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(lastPayload)
+                });
+                const data = await res.json();
+                if (!res.ok || data.error) throw new Error(data.error || 'No fue posible calcular');
+                renderResult(data);
+            } catch (err) {
+                result.style.display = 'none';
+                errorBox.textContent = err.message;
+                errorBox.style.display = 'block';
+            }
+        });
+
+        function renderResult(data) {
+            result.className = 'result' + (data.director_review ? ' director' : '');
+            const offer = data.director_review ? 'Validar con director' : `${data.offer_min_formatted} - ${data.offer_max_formatted}`;
+            result.innerHTML = `
+                <h3>Oferta estimada</h3>
+                <div class="offer">${offer}</div>
+                <div class="cards">
+                    <div class="card"><small>Base de referencia</small><strong>${data.reference_price_formatted || 'No encontrado'}</strong></div>
+                    <div class="card"><small>Venta estimada</small><strong>${data.estimated_sale_formatted || 'Validar'}</strong></div>
+                    <div class="card"><small>Ajuste kilometraje</small><strong>${data.mileage_adjustment_formatted || '$ 0'}</strong></div>
+                </div>
+                <div class="method"><small>METODO</small><br>${data.method || 'IA + referencias de mercado y regla comercial.'}</div>
+                <div class="actions"><button type="button" onclick="openMarket('used')">Ver usados</button><button type="button" onclick="openMarket('new')">Ver nuevos</button></div>
+                <div class="notes">${(data.notes || []).map(n => `<div class="note">${n}</div>`).join('')}</div>
+            `;
+        }
+
+        async function openMarket(kind) {
+            if (!lastPayload) return;
+            const qs = new URLSearchParams({
+                brand: lastPayload.brand || '', line: lastPayload.line || '', version: lastPayload.version || '', year: lastPayload.year || ''
+            });
+            const res = await fetch(`/api/cotizador/market/${kind}?${qs}`, {credentials:'include'});
+            const data = await res.json();
+            modalItems = data.items || [];
+            document.getElementById('modalKind').textContent = kind === 'new' ? 'NUEVOS ENCONTRADOS' : 'USADOS ENCONTRADOS';
+            document.getElementById('modalTitle').textContent = `${lastPayload.brand || ''} ${lastPayload.line || ''} ${lastPayload.version || ''} ${lastPayload.year || ''}`.toUpperCase();
+            document.getElementById('tableSearch').value = '';
+            renderRows(modalItems);
+            document.getElementById('modal').style.display = 'flex';
+        }
+        function renderRows(items) {
+            document.getElementById('modalRows').innerHTML = items.map(i => `
+                <tr>
+                    <td>${escapeHtml(i.platform || '-')}</td>
+                    <td>${escapeHtml(i.vehicle || '-')}</td>
+                    <td>${escapeHtml(i.year || '-')}</td>
+                    <td>${escapeHtml(i.price_formatted || money(i.price))}</td>
+                    <td>${escapeHtml(i.city || '-')}</td>
+                    <td>${escapeHtml(i.seller || '-')}</td>
+                    <td><a class="source-link" href="${escapeHtml(sourceUrl(i))}" target="_blank" rel="noopener noreferrer">${i.url ? 'Ver fuente' : 'Buscar fuente'}</a></td>
+                </tr>
+            `).join('') || '<tr><td colspan="7">Sin referencias para mostrar.</td></tr>';
+        }
+        document.getElementById('tableSearch').addEventListener('input', (ev) => {
+            const q = ev.target.value.toUpperCase();
+            renderRows(modalItems.filter(i => JSON.stringify(i).toUpperCase().includes(q)));
+        });
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        initOptions();
+    </script>
+</body>
+</html>

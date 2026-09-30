@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#26377f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Carmax QR">
+    <link rel="manifest" href="/static/manifest-carmax-v5.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/carmax-pwa-v5-192.png">
+    <script src="/static/pwa.js?v=5" defer></script>
     <title>Dashboard - {{ vehicle.name }}</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
@@ -403,21 +409,21 @@
             </div>
             
             <div class="timestamp">
-                🕒 Registrada el: {{ last_location.created_at }}
+                 Registrada el: {{ last_location.created_at }}
             </div>
             
             <button class="btn" onclick="guardarUbicacion()" style="margin-top: 15px; width: 100%;">
-                💾 Guardar Ubicación Actual
+                 Guardar Ubicación Actual
             </button>
         </div>
         
         <div id="map"></div>
         
-        <button class="historial-btn" id="historial-toggle-btn" onclick="loadHistorial()">📊 Ver Historial</button>
+        <button class="historial-btn" id="historial-toggle-btn" onclick="loadHistorial()"> Ver Historial</button>
         
         <!-- Panel de Filtros -->
         <div id="filtros-panel" class="filtros-section">
-            <h3>🔍 Filtros de Búsqueda</h3>
+            <h3> Filtros de Búsqueda</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Los filtros de fecha son opcionales. Deja en blanco para descargar todo.</p>
             <div class="filtros-grid">
                 <div class="filtro-input">
@@ -429,14 +435,14 @@
                     <input type="date" id="filtro-fecha-hasta" placeholder="Fecha hasta">
                 </div>
                 <div>
-                    <button class="filtro-btn" onclick="descargarExcel()">📥 Descargar Excel</button>
-                    <button class="filtro-btn-reset" onclick="resetFiltros()">🔄 Limpiar</button>
+                    <button class="filtro-btn" onclick="descargarExcel()"> Descargar Excel</button>
+                    <button class="filtro-btn-reset" onclick="resetFiltros()"> Limpiar</button>
                 </div>
             </div>
         </div>
         
         <div id="historial-section" class="historial-section">
-            <h3>📋 Historial Completo de Ubicaciones</h3>
+            <h3> Historial Completo de Ubicaciones</h3>
             
             <div id="historial-vacio" class="historial-vacio">
                 <p>No hay registros de ubicación para este vehículo.</p>
@@ -499,7 +505,7 @@
                     const data = await response.json();
                     
                     if (data.success) {
-                        alert("✅ Ubicación guardada correctamente");
+                        alert(" Ubicación guardada correctamente");
                         // Recargar la página para ver el nuevo registro
                         setTimeout(() => {
                             location.reload();
@@ -668,7 +674,7 @@
                 // Mostrar loader
                 const btn = event.target;
                 const originalText = btn.textContent;
-                btn.textContent = "⏳ Generando...";
+                btn.textContent = " Generando...";
                 btn.disabled = true;
                 
                 // Descargar archivo
@@ -698,11 +704,11 @@
                         // Restaurar botón
                         btn.textContent = originalText;
                         btn.disabled = false;
-                        alert("✅ Archivo descargado exitosamente");
+                        alert(" Archivo descargado exitosamente");
                     })
                     .catch(error => {
                         console.error("Error:", error);
-                        alert("❌ Error al descargar: " + error.message);
+                        alert(" Error al descargar: " + error.message);
                         btn.textContent = originalText;
                         btn.disabled = false;
                     });
@@ -723,7 +729,7 @@
         {% else %}
         
         <div class="no-location">
-            <p>📌 No hay registros de ubicación aún</p>
+            <p> No hay registros de ubicación aún</p>
             <p style="font-size: 14px;">Escanea el código QR del vehículo para registrar su ubicación.</p>
         </div>
         
@@ -731,7 +737,7 @@
         
         <div class="action-buttons">
             <a href="/" class="btn">← Escanear otro vehículo</a>
-            <button class="btn btn-secondary" onclick="location.reload()">🔄 Actualizar</button>
+            <button class="btn btn-secondary" onclick="location.reload()"> Actualizar</button>
         </div>
     </div>
 </body>

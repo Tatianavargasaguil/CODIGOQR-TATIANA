@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#26377f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Carmax QR">
+    <link rel="manifest" href="/static/manifest-carmax-v5.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/carmax-pwa-v5-192.png">
+    <script src="/static/pwa.js?v=5" defer></script>
     <title>Control de Puerta - Verificación de Escaneos</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
@@ -406,14 +412,14 @@
         </div>
         
         <header>
-            <h1>🚪 Control de Puerta</h1>
+            <h1> Control de Puerta</h1>
             <p class="subtitle">Verifica si los vehículos fueron escaneados al salir</p>
         </header>
         
         <!-- TABS -->
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('manual')">✏️ Búsqueda Manual</button>
-            <button class="tab" onclick="switchTab('report')">📊 Reporte del Día</button>
+            <button class="tab active" onclick="switchTab('manual')"> Búsqueda Manual</button>
+            <button class="tab" onclick="switchTab('report')"> Reporte del Día</button>
         </div>
         
         <!-- TAB 1: BÚSQUEDA MANUAL -->
@@ -434,10 +440,10 @@
             <div class="section">
                 <div class="btn-group">
                     <button class="btn-primary" onclick="loadDailyReport()" style="flex: 1;">
-                        📊 Cargar Reporte de Hoy
+                         Cargar Reporte de Hoy
                     </button>
                     <button class="btn-success" onclick="downloadFullReport()">
-                        📥 Descargar Excel
+                         Descargar Excel
                     </button>
                 </div>
                 <div id="report-container"></div>
@@ -641,7 +647,7 @@
                     } else {
                         // NO fue escaneado
                         showResult('warning',
-                            `⚠️ ${data.vehicle_name} - NO ESCANEADO`,
+                            ` ${data.vehicle_name} - NO ESCANEADO`,
                             `
                             <div class="status-badge badge-not-scanned">❌ NO FUE ESCANEADO</div>
                             <p style="margin: 15px 0; font-weight: 600;">Este vehículo salió sin registro de escaneo.</p>
@@ -649,11 +655,11 @@
                                 <strong style="color: #667eea;">REGISTRA LA FALTA:</strong>
                             </div>
                             <div class="form-group">
-                                <label>👤 ¿Quién DEBERÍA haber escaneado? (Nombre del movilizador):</label>
+                                <label> ¿Quién DEBERÍA haber escaneado? (Nombre del movilizador):</label>
                                 <input type="text" id="responsable-name" placeholder="Ej: Juan Pérez, Carlos López, etc." />
                             </div>
                             <div class="form-group">
-                                <label>📝 Observaciones/Detalles (¿por qué no lo hizo?):</label>
+                                <label> Observaciones/Detalles (¿por qué no lo hizo?):</label>
                                 <textarea id="unscanned-motivo" placeholder="Ej: Se fue corriendo sin avisar, tenía prisa, no llego a tiempo, etc." style="min-height: 100px;"></textarea>
                             </div>
                             <button class="btn-danger" onclick="markUnscanned('${vehicleCode}')">
@@ -717,7 +723,7 @@
                                 <strong>Hora:</strong> ${data.timestamp}
                             </div>
                             <p style="margin-top: 15px; color: #666; font-size: 14px;">
-                                ℹ️ Este registro será incluido en el reporte de incumplimientos.
+                                ℹ Este registro será incluido en el reporte de incumplimientos.
                             </p>
                             <button class="btn-primary" onclick="location.reload()" style="width: 100%;">
                                 ← Volver a Escanear
@@ -928,7 +934,7 @@
                     </table>
                     <div class="btn-group" style="margin-top: 20px;">
                         <button class="btn-success" onclick="downloadUnscannedOnly()">
-                            📥 Descargar Solo No Escaneados
+                             Descargar Solo No Escaneados
                         </button>
                     </div>
                 </div>

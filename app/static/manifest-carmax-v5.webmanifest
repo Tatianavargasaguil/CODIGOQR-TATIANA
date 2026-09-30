@@ -1,0 +1,32 @@
+{
+  "id": "/?pwa=carmax-v5",
+  "name": "Carmax QR",
+  "short_name": "Carmax",
+  "description": "Sistema Carmax para escaneo QR y ubicacion de vehiculos.",
+  "start_url": "/?pwa=carmax-v5",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f0f4ff",
+  "theme_color": "#26377f",
+  "icons": [
+    {
+      "src": "/static/icons/carmax-pwa-v5-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/carmax-pwa-v5-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/carmax-pwa-v5-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

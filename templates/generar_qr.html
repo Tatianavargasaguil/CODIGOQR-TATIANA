@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#26377f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Carmax QR">
+    <link rel="manifest" href="/static/manifest-carmax-v5.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/carmax-pwa-v5-192.png">
+    <script src="/static/pwa.js?v=5" defer></script>
     <title>Generar Código QR - Sistema de Ubicación</title>
     <style>
         * {
@@ -374,11 +380,11 @@
                 <a href="/logout" style="color:#667eea; text-decoration:none;">Cerrar sesión</a>
             {% endif %}
         </div>
-        <h1>🏷️ Generar Código QR</h1>
+        <h1> Generar Código QR</h1>
         <p class="subtitle">Crea un código QR único para tu vehículo. Imprime o captura la imagen y pégalo en tu carro.</p>
         
         <div class="section">
-            <h2>📱 ¿Cómo funciona?</h2>
+            <h2> ¿Cómo funciona?</h2>
             <ol class="steps">
                 <li><strong>Genera</strong> un código QR único para tu vehículo</li>
                 <li><strong>Imprime o captura</strong> la imagen del código</li>
@@ -389,13 +395,13 @@
         
        
         <div class="button-group">
-            <button class="btn-primary" onclick="mostrarSeccion('generar')">✨ Generar QR Automático</button>
-            <button class="btn-primary" onclick="mostrarSeccion('regenerar')" style="background: #f59e0b;">🔄 Regenerar QR Existente</button>
+            <button class="btn-primary" onclick="mostrarSeccion('generar')"> Generar QR Automático</button>
+            <button class="btn-primary" onclick="mostrarSeccion('regenerar')" style="background: #f59e0b;"> Regenerar QR Existente</button>
             <button class="btn-secondary" onclick="window.location.href='/'">← Volver a Escanear</button>
         </div>
         
         <div class="section">
-            <h2>🔍 Ver Historial</h2>
+            <h2> Ver Historial</h2>
             <p>¿Quieres ver el historial de un vehículo que ya escaneaste?</p>
             
             <div class="input-group">
@@ -428,7 +434,7 @@
         
         <!-- Panel de Filtros para Exportar Excel -->
         <div id="filtros-panel-qr" class="section" style="display: none; background: #fffdf7; border-color: #ffc107;">
-            <h3 style="color: #333; margin-bottom: 15px;">🔍 Filtros y Exportación</h3>
+            <h3 style="color: #333; margin-bottom: 15px;"> Filtros y Exportación</h3>
             <div class="filtros-grid-qr">
                 <div>
                     <label>Desde:</label>
@@ -443,7 +449,7 @@
                     <input type="text" id="filtro-placa-qr" placeholder="Ej: veh_abc123">
                 </div>
                 <div>
-                    <button class="btn-primary" onclick="descargarExcelQR()">📥 Descargar</button>
+                    <button class="btn-primary" onclick="descargarExcelQR()"> Descargar</button>
                     <button onclick="resetFiltrosQR()" style="background: #999; color: white;">🔄</button>
                 </div>
             </div>
@@ -483,7 +489,7 @@
         <div id="status-message" class="status-message"></div>
         
         <div id="qr-result" class="qr-container">
-            <h2>✅ ¡Código QR Generado!</h2>
+            <h2> ¡Código QR Generado!</h2>
             
             <p>Código único del vehículo:</p>
             <div class="codigo-display" id="codigo-qr-display"></div>
@@ -491,11 +497,11 @@
             <p>Imagen del código QR:</p>
             <img id="qr-image" src="" alt="Código QR">
             
-            <button class="copy-button" onclick="copiarAlPortapapeles()">📋 Copiar Código</button>
-            <button class="download-button" onclick="descargarQR()">⬇️ Descargar Imagen</button>
+            <button class="copy-button" onclick="copiarAlPortapapeles()"> Copiar Código</button>
+            <button class="download-button" onclick="descargarQR()">⬇ Descargar Imagen</button>
             
             <div class="info-box">
-                📌 Puedes:
+                 Puedes:
                 <ul style="margin-top: 10px; margin-left: 20px;">
                     <li>Imprimir la imagen</li>
                     <li>Capturar screenshot en tu celular</li>
@@ -504,8 +510,8 @@
                 </ul>
             </div>
             
-            <button class="redirect-button" onclick="generarOtro()">✨ Generar Otro QR</button>
-            <button class="redirect-button" onclick="irAEscanear()">📱 Ir a Escanear</button>
+            <button class="redirect-button" onclick="generarOtro()"> Generar Otro QR</button>
+            <button class="redirect-button" onclick="irAEscanear()"> Ir a Escanear</button>
         </div>
     </div>
 
@@ -699,7 +705,7 @@
             const placa = document.getElementById("filtro-placa-qr").value;
             
             if (!placa) {
-                alert("⚠️ Por favor busca un vehículo primero");
+                alert(" Por favor busca un vehículo primero");
                 return;
             }
             
@@ -787,7 +793,7 @@
             statusDiv.className = "status-message status-success";
             statusDiv.style.display = "block";
             
-            console.log("🔄 Enviando POST a /api/regenerar-qr/" + encodeURIComponent(codigoLimpio));
+            console.log(" Enviando POST a /api/regenerar-qr/" + encodeURIComponent(codigoLimpio));
             
             fetch("/api/regenerar-qr/" + encodeURIComponent(codigoLimpio), {
                 method: "POST",
@@ -795,7 +801,7 @@
                 credentials: "include"
             })
             .then(response => {
-                console.log("📊 Response status:", response.status);
+                console.log(" Response status:", response.status);
                 if (!response.ok) {
                     return response.json().then(data => {
                         throw new Error(data.detail || response.statusText);
@@ -847,7 +853,7 @@
                 
                 if (data.total_vehiculos === 0) {
                     container.innerHTML = `<div style="padding: 15px; color: #666; text-align: center;">
-                        ℹ️ No tienes vehículos registrados aún.
+                        ℹ No tienes vehículos registrados aún.
                     </div>`;
                     return;
                 }

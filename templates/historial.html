@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#26377f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Carmax QR">
+    <link rel="manifest" href="/static/manifest-carmax-v5.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/carmax-pwa-v5-192.png">
+    <script src="/static/pwa.js?v=5" defer></script>
     <title>Historial por Nombre/Placa - Sistema de Ubicación</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
@@ -489,7 +495,7 @@
         </div>
         
         <div class="header">
-            <h1>🔍 Historial por Nombre/Placa</h1>
+            <h1> Historial por Nombre/Placa</h1>
             <p>Busca un vehículo por su nombre o placa para ver todo su historial de ubicaciones</p>
         </div>
         
@@ -579,16 +585,16 @@
                     <input type="text" id="filtro-placa-excel" placeholder="Ej: ABC123" readonly>
                 </div>
                 <div>
-                    <button class="filtro-btn" onclick="descargarExcelHistorial()">📥 Descargar Excel</button>
-                    <button class="filtro-btn-reset" onclick="resetFiltrosHistorial()">🔄 Limpiar</button>
+                    <button class="filtro-btn" onclick="descargarExcelHistorial()"> Descargar Excel</button>
+                    <button class="filtro-btn-reset" onclick="resetFiltrosHistorial()"> Limpiar</button>
                 </div>
             </div>
         </div>
         
         <div id="historial-section" class="historial-section">
-            <h3>📋 Historial de Ubicaciones</h3>
+            <h3> Historial de Ubicaciones</h3>
             
-            <!-- 👇 NUEVO: Contenedor con scroll horizontal -->
+            <!--  NUEVO: Contenedor con scroll horizontal -->
             <div class="table-responsive">
                 <table class="historial-table" id="tabla-historial">
                     <thead>
@@ -608,30 +614,30 @@
                     </tbody>
                 </table>
             </div>
-            <!-- 👆 FIN del contenedor -->
+            <!--  FIN del contenedor -->
         </div>
         
         <div id="mapa-container" class="mapa-container" style="display: none;">
-            <h3>🗺️ Mapa de Ubicaciones</h3>
+            <h3> Mapa de Ubicaciones</h3>
             <div style="position: relative; width: 100%; height: 500px; margin: 20px 0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
                 <div id="map" style="width: 100%; height: 100%;"></div>
             </div>
             <p style="text-align: center; color: #666; font-size: 14px; margin-top: 5px;">
-                <small>📍 Los marcadores verdes son las ubicaciones registradas</small>
+                <small> Los marcadores verdes son las ubicaciones registradas</small>
             </p>
         </div>
         
         <div id="no-results" class="no-results" style="display: none;">
-            <p>❌ No se encontraron registros para este nombre/placa</p>
+            <p> No se encontraron registros para este nombre/placa</p>
             <small>Verifica el nombre e intenta de nuevo</small>
         </div>
         
         <div class="action-buttons">
             <a href="/" style="text-decoration: none;">
-                <button class="btn-secondary">🔄 Escanear QR</button>
+                <button class="btn-secondary"> Escanear QR</button>
             </a>
             <a href="/generar-qr" style="text-decoration: none;">
-                <button class="btn-primary">➕ Generar Nuevo QR</button>
+                <button class="btn-primary"> Generar Nuevo QR</button>
             </a>
         </div>
     </div>
@@ -831,7 +837,7 @@
             const placa = document.getElementById("filtro-placa-excel").value;
             
             if (!placa) {
-                alert("⚠️ Primero busca un vehículo");
+                alert(" Primero busca un vehículo");
                 return;
             }
             

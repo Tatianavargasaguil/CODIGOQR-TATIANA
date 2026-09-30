@@ -20,6 +20,8 @@ services:
     restart: always
     depends_on:
       - db
+    env_file:
+      - .env
     environment:
       DB_USER: qr_user
       DB_PASSWORD: qr_pass
@@ -27,10 +29,6 @@ services:
       DB_PORT: 5432
       DB_NAME: qr_db_nueva
       # variables de seguridad (cambie en producción)
-      ADMIN_USER: admin
-      ADMIN_PASS: secret
-      SESSION_SECRET: supersecret
-      ALLOWED_ORIGINS: http://localhost:8001
     ports:
       - "8001:8000"
     volumes:

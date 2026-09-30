@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#26377f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Carmax QR">
+    <link rel="manifest" href="/static/manifest-carmax-v5.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/carmax-pwa-v5-192.png">
+    <script src="/static/pwa.js?v=5" defer></script>
     <title>Sistema de Ubicación de Vehículos</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -290,6 +296,8 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
         }
         
         .btn-control {
@@ -312,7 +320,7 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
         }
-        
+
         .logout-link {
             color: #667eea;
             text-decoration: none;
@@ -335,8 +343,11 @@
                 {% endif %}
             </div>
             <div class="header-right">
+                <a href="/cotizador" class="btn-control" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);">
+                    Cotizador
+                </a>
                 <a href="/puerta" class="btn-control">
-                    🚪 Control de Puerta
+                     Control de Puerta
                 </a>
                 {% if request.session.user %}
                     <a href="/logout" class="logout-link">
@@ -347,7 +358,7 @@
         </div>
         <!-- SECCIÓN 1: Escanear QR -->
         <div id="section-scan" class="section active">
-            <h1>📱 Escanear Código QR</h1>
+            <h1> Escanear Código QR</h1>
             <p>Apunta tu cámara al código QR pegado en el vehículo</p>
             
             <div class="info-box">
@@ -396,7 +407,7 @@
             
             <!-- Instrucciones -->
             <div class="info-box">
-                <strong>📸 Instrucciones:</strong>
+                <strong> Instrucciones:</strong>
                 <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">
                     <li>Coloca el código QR dentro del marco</li>
                     <li>Asegúrate de que la luz sea suficiente</li>
@@ -411,7 +422,7 @@
                     🔧 Si el scanner no funciona, intenta esto:
                 </p>
                 <button onclick="requestCameraPermissionExplicit()" style="width: 100%; padding: 12px; background: #48bb78; color: white; border: none; border-radius: 6px; font-weight: bold; margin-bottom: 12px; cursor: pointer; font-size: 16px;">
-                    🎥 Solicitar Permiso de Cámara
+                     Solicitar Permiso de Cámara
                 </button>
                 <p style="color: #666; margin-bottom: 10px; font-size: 14px;">
                     O ingresa el código manualmente:
@@ -433,10 +444,10 @@
                     → Generar código QR →
                 </a>
                 <a href="/historial" style="color: #764ba2; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 10px; margin-right: 15px;">
-                    📊 Ver Historial →
+                     Ver Historial →
                 </a>
                 <a href="/reportes-diarios" style="color: #28a745; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 10px;">
-                    📅 Reportes por Día →
+                     Reportes por Día →
                 </a>
             </div>
         </div>
@@ -538,7 +549,7 @@
         
         <!-- SECCIÓN 3: Capturar ubicación -->
         <div id="section-location" class="section">
-            <h1>📍 Ubicación del Vehículo</h1>
+            <h1> Ubicación del Vehículo</h1>
             
             <div id="vehicle-info" class="info-box">
                 <!-- Se llena dinámicamente -->
@@ -553,12 +564,12 @@
             <div id="location-coords" class="location-display" style="display: none;"></div>
             
             <p style="color: #999; font-size: 14px; text-align: center;">
-                ✓ Tu ubicación ha sido capturada. Haz clic en "Buscar Ubicación" para confirmar y guardarla.
+                ✓ Tu ubicación ha sido capturada. Haz clic en "Guardar ubicación" para confirmar y guardarla.
             </p>
             
             <div class="btn-group">
                 <button class="btn-secondary" onclick="goBackToScan()">← Escanear otro</button>
-                <button class="btn-success" onclick="confirmLocation()">🔍 Buscar Ubicación</button>
+                <button class="btn-success" onclick="confirmLocation()">Guardar ubicación</button>
             </div>
         </div>
         
@@ -567,7 +578,7 @@
             <h1>✅ ubicación Confirmada</h1>
             
             <div class="summary-card">
-                <h3>📌 Resumen del Registro</h3>
+                <h3> Resumen del Registro</h3>
                 
                 <div class="summary-item">
                     <span class="summary-label"><span class="icon">🚗</span>Vehículo:</span>
@@ -819,7 +830,7 @@
             }
             
             if (!code.startsWith("veh_")) {
-                alert("⚠️ El código debe comenzar con 'veh_' (ej: veh_a1b2c3d4)");
+                alert(" El código debe comenzar con 'veh_' (ej: veh_a1b2c3d4)");
                 return;
             }
             
@@ -905,7 +916,7 @@
             }
             
             try {
-                updateCameraStatus("🔍 Verificando vehículo en base de datos...", "info");
+                updateCameraStatus(" Verificando vehículo en base de datos...", "info");
                 
                 const response = await fetch(`/api/vehicle-qr/${encodeURIComponent(code)}`, { method: "POST", credentials: "include" });
                 let data;
@@ -1095,81 +1106,102 @@
                 return;
             }
             
+            showLocationStatus("loading", "⏳ Obteniendo ubicación (intento 1 de 2)...");
+            
+            // PASO 1: Intenta sin enableHighAccuracy (más rápido)
             navigator.geolocation.getCurrentPosition(
-                async function(position) {
-                    // Capturar datos del formulario en el objeto de ubicación
-                    currentLocation = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        origen: document.getElementById("edit-vehicle-origen").value.trim() || null,
-                        destino: document.getElementById("edit-vehicle-destino").value.trim() || null,
-                        responsable_origen: document.getElementById("edit-vehicle-resp-origen").value.trim() || null,
-                        responsable_destino: document.getElementById("edit-vehicle-resp-destino").value.trim() || null,
-                        nivel_gasolina: document.getElementById("edit-vehicle-nivel").value.trim() || null,
-                        kilometraje: document.getElementById("edit-vehicle-km").value.trim() || null,
-                        observaciones: document.getElementById("edit-vehicle-observaciones").value.trim() || null,
-                        direccion_completa: null
-                    };
+                (position) => processLocationSuccess(position),
+                (error) => {
+                    console.warn("Primer intento falló, reintentando con alta precisión...", error);
+                    showLocationStatus("loading", "⏳ Reintentando con GPS de alta precisión (intento 2 de 2)...");
                     
-                    showLocationStatus("success", "✅ Ubicación capturada correctamente. Obteniendo dirección...");
-                    
-                    // Hacer reverse geocoding para obtener la dirección completa
-                    try {
-                        const direccion = await reverseGeocoding(position.coords.latitude, position.coords.longitude);
-                        currentLocation.direccion_completa = direccion;
-                        document.getElementById("location-coords").innerHTML = `
-                            <strong>📍 Coordenadas:</strong><br>
-                            Latitud: ${currentLocation.latitude.toFixed(6)}<br>
-                            Longitud: ${currentLocation.longitude.toFixed(6)}<br>
-                            <strong>📍 Dirección:</strong><br>
-                            ${direccion}
-                        `;
-                    } catch (err) {
-                        console.warn("Error en reverse geocoding:", err);
-                        document.getElementById("location-coords").innerHTML = `
-                            <strong>📍 Coordenadas:</strong><br>
-                            Latitud: ${currentLocation.latitude.toFixed(6)}<br>
-                            Longitud: ${currentLocation.longitude.toFixed(6)}<br>
-                            <em>No se pudo obtener la dirección</em>
-                        `;
-                    }
-                    
-                    displayLocationOnMap();
-                    document.getElementById("location-coords").style.display = "block";
-                    showLocationStatus("success", "✅ Ubicación y dirección capturadas correctamente");
-                },
-                function(error) {
-                    console.error("Error de geolocalización:", error);
-                    
-                    let errorMsg = "❌ Error al obtener ubicación: ";
-                    if (error.code === error.PERMISSION_DENIED) {
-                        errorMsg += "Permiso denegado. Habilita la ubicación en la configuración del navegador/celular";
-                    } else if (error.code === error.POSITION_UNAVAILABLE) {
-                        errorMsg += "Tu ubicación no está disponible (GPS apagado o sin señal)";
-                    } else if (error.code === error.TIMEOUT) {
-                        errorMsg += "Tiempo agotado. Intenta de nuevo";
-                    } else {
-                        errorMsg += error.message;
-                    }
-                    
-                    showLocationStatus("error", errorMsg);
-                    showLocationAlternatives();
+                    // PASO 2: Reintenta CON enableHighAccuracy
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => processLocationSuccess(position),
+                        (error) => handleLocationError(error),
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 30000,  // Más tiempo para iPhones
+                            maximumAge: 0
+                        }
+                    );
                 },
                 {
                     enableHighAccuracy: false,
-                    timeout: 10000,
+                    timeout: 15000,
                     maximumAge: 0
                 }
             );
+        }
+        
+        async function processLocationSuccess(position) {
+            // Capturar datos del formulario en el objeto de ubicación
+            currentLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                origen: document.getElementById("edit-vehicle-origen").value.trim() || null,
+                destino: document.getElementById("edit-vehicle-destino").value.trim() || null,
+                responsable_origen: document.getElementById("edit-vehicle-resp-origen").value.trim() || null,
+                responsable_destino: document.getElementById("edit-vehicle-resp-destino").value.trim() || null,
+                nivel_gasolina: document.getElementById("edit-vehicle-nivel").value.trim() || null,
+                kilometraje: document.getElementById("edit-vehicle-km").value.trim() || null,
+                observaciones: document.getElementById("edit-vehicle-observaciones").value.trim() || null,
+                direccion_completa: null
+            };
+            
+            showLocationStatus("success", "✅ Ubicación capturada correctamente. Obteniendo dirección...");
+            
+            // Hacer reverse geocoding para obtener la dirección completa
+            try {
+                const direccion = await reverseGeocoding(position.coords.latitude, position.coords.longitude);
+                currentLocation.direccion_completa = direccion;
+                document.getElementById("location-coords").innerHTML = `
+                    <strong> Coordenadas:</strong><br>
+                    Latitud: ${currentLocation.latitude.toFixed(6)}<br>
+                    Longitud: ${currentLocation.longitude.toFixed(6)}<br>
+                    <strong> Dirección:</strong><br>
+                    ${direccion}
+                `;
+            } catch (err) {
+                console.warn("Error en reverse geocoding:", err);
+                document.getElementById("location-coords").innerHTML = `
+                    <strong> Coordenadas:</strong><br>
+                    Latitud: ${currentLocation.latitude.toFixed(6)}<br>
+                    Longitud: ${currentLocation.longitude.toFixed(6)}<br>
+                    <em>No se pudo obtener la dirección</em>
+                `;
+            }
+            
+            displayLocationOnMap();
+            document.getElementById("location-coords").style.display = "block";
+            showLocationStatus("success", "✅ Ubicación y dirección capturadas correctamente");
+        }
+        
+        function handleLocationError(error) {
+            console.error("Error de geolocalización:", error);
+            
+            let errorMsg = "❌ Error al obtener ubicación: ";
+            if (error.code === error.PERMISSION_DENIED) {
+                errorMsg += "Permiso denegado. Habilita la ubicación en la configuración del navegador/celular";
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                errorMsg += "Tu ubicación no está disponible (GPS apagado o sin señal)";
+            } else if (error.code === error.TIMEOUT) {
+                errorMsg += "Tiempo agotado. Intenta de nuevo";
+            } else {
+                errorMsg += error.message;
+            }
+            
+            showLocationStatus("error", errorMsg);
+            showLocationAlternatives();
         }
         
         function showLocationAlternatives() {
             const coordsBox = document.getElementById("location-coords");
             coordsBox.innerHTML = `
                 <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 8px;">
-                    <strong style="color: #856404;">⚠️ Para habilitar la ubicación:</strong><br><br>
+                    <strong style="color: #856404;"> Para habilitar la ubicación:</strong><br><br>
                     <div style="margin-bottom: 12px; padding: 10px; background: white; border-radius: 5px; border-left: 4px solid #ffc107;">
-                        <strong>📱 En tu celular:</strong><br>
+                        <strong> En tu celular:</strong><br>
                         <ol style="margin: 8px 0; padding-left: 20px; font-size: 14px;">
                             <li>Abre <strong>Configuración</strong></li>
                             <li>Ve a <strong>Privacidad</strong> o <strong>Apps</strong></li>
@@ -1179,16 +1211,16 @@
                         </ol>
                     </div>
                     <div style="margin-bottom: 12px; padding: 10px; background: white; border-radius: 5px; border-left: 4px solid #ffc107;">
-                        <strong>🌐 O en el navegador:</strong><br>
+                        <strong> O en el navegador:</strong><br>
                         <ol style="margin: 8px 0; padding-left: 20px; font-size: 14px;">
                             <li>Ve a la barra de direcciones</li>
-                            <li>Toca el ícono 🔒 (candado/información)</li>
+                            <li>Toca el ícono  (candado/información)</li>
                             <li>Busca <strong>Ubicación</strong></li>
                             <li>Cambia a <strong>"Permitir"</strong></li>
                         </ol>
                     </div>
                     <button onclick="requestLocationPermissionExplicit()" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px;">
-                        🔄 Reintentar después de habilitar
+                         Reintentar después de habilitar
                     </button>
                     <hr style="border: none; border-top: 1px solid #ddd; margin: 12px 0;">
                     <div style="text-align: center;">
@@ -1229,10 +1261,10 @@
                         const direccion = await reverseGeocoding(position.coords.latitude, position.coords.longitude);
                         currentLocation.direccion_completa = direccion;
                         document.getElementById("location-coords").innerHTML = `
-                            <strong>📍 Coordenadas:</strong><br>
+                            <strong> Coordenadas:</strong><br>
                             Latitud: ${currentLocation.latitude.toFixed(6)}<br>
                             Longitud: ${currentLocation.longitude.toFixed(6)}<br>
-                            <strong>📍 Dirección:</strong><br>
+                            <strong> Dirección:</strong><br>
                             ${direccion}
                         `;
                     } catch (err) {
@@ -1290,14 +1322,17 @@
                 direccion_completa: null
             };
             
+            console.log("🔄 Continuando sin ubicación GPS con datos:", currentLocation);
+            
             document.getElementById("location-coords").innerHTML = `
                 <div style="background: #e3f2fd; border: 2px solid #2196F3; padding: 15px; border-radius: 8px; text-align: center;">
-                    <strong style="color: #1565c0;">ℹ️ Registro sin ubicación GPS</strong><br>
-                    <small>Se guardará solo con los datos del formulario</small>
+                    <strong style="color: #1565c0;">ℹ Registro sin ubicación GPS</strong><br>
+                    <small>Se guardará con los datos del formulario. Presiona "Guardar ubicación" para guardar.</small>
                 </div>
             `;
             
             showLocationStatus("success", "✅ Registro sin ubicación GPS - Listo para guardar");
+            document.getElementById("location-coords").style.display = "block";
         }
         
         async function reverseGeocoding(lat, lon) {
@@ -1376,7 +1411,7 @@
             
             L.marker([currentLocation.latitude, currentLocation.longitude])
                 .addTo(currentMap)
-                .bindPopup("📍 Ubicación actual del vehículo")
+                .bindPopup(" Ubicación actual del vehículo")
                 .openPopup();
         }
         
@@ -1396,7 +1431,7 @@
                 return;
             }
             
-            showLocationStatus("loading", "⏳ Guardando ubicación...");
+            showLocationStatus("loading", " Guardando ubicación...");
             
             try {
                 const response = await fetch(`/api/save-location/${currentVehicleCode}`, {
@@ -1426,30 +1461,36 @@
             
             showSection("section-confirm");
             
-            // Mostrar mapa en resumen
+            // Mostrar mapa en resumen SOLO si hay ubicación GPS
             setTimeout(() => {
-                if (!currentMapConfirm) {
-                    currentMapConfirm = L.map('map-confirm').setView(
-                        [currentLocation.latitude, currentLocation.longitude],
-                        15
-                    );
-                    
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap contributors'
-                    }).addTo(currentMapConfirm);
-                }
-                
-                currentMapConfirm.eachLayer(function(layer) {
-                    if (layer instanceof L.Marker) {
-                        currentMapConfirm.removeLayer(layer);
+                // Verificar que tenemos coordenadas válidas
+                if (currentLocation.latitude !== null && currentLocation.longitude !== null) {
+                    if (!currentMapConfirm) {
+                        currentMapConfirm = L.map('map-confirm').setView(
+                            [currentLocation.latitude, currentLocation.longitude],
+                            15
+                        );
+                        
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '© OpenStreetMap contributors'
+                        }).addTo(currentMapConfirm);
                     }
-                });
-                
-                L.marker([currentLocation.latitude, currentLocation.longitude])
-                    .addTo(currentMapConfirm)
-                    .bindPopup("Ubicación guardada");
-                
-                document.getElementById("map-confirm").style.display = "block";
+                    
+                    currentMapConfirm.eachLayer(function(layer) {
+                        if (layer instanceof L.Marker) {
+                            currentMapConfirm.removeLayer(layer);
+                        }
+                    });
+                    
+                    L.marker([currentLocation.latitude, currentLocation.longitude])
+                        .addTo(currentMapConfirm)
+                        .bindPopup("Ubicación guardada");
+                    
+                    document.getElementById("map-confirm").style.display = "block";
+                } else {
+                    // Sin ubicación GPS - ocultar el mapa
+                    document.getElementById("map-confirm").style.display = "none";
+                }
             }, 100);
         }
         
@@ -1458,7 +1499,7 @@
         }
         
         function goBackToScan() {
-            console.log("🔄 Volviendo al scanner...");
+            console.log(" Volviendo al scanner...");
             
             // Limpiar todas las variables
             currentVehicleCode = null;
