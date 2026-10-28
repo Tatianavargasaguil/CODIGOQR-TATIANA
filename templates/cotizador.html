@@ -199,6 +199,22 @@
             steps.forEach(s => s.hidden = Number(s.dataset.step) !== step);
             pills.forEach((p, i) => p.classList.toggle('active', i < step));
         }
+        function resetQuote() {
+            form.reset();
+            lastPayload = null;
+            modalItems = [];
+            closeModal();
+            document.getElementById('modalRows').innerHTML = '';
+            document.getElementById('tableSearch').value = '';
+            result.innerHTML = '';
+            result.className = 'result';
+            result.style.display = 'none';
+            errorBox.textContent = '';
+            errorBox.style.display = 'none';
+            showStep(1);
+            form.elements.brand.focus({preventScroll: true});
+            form.scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
         document.querySelectorAll('[data-next]').forEach(btn => btn.onclick = () => showStep(Math.min(3, currentStep + 1)));
         document.querySelectorAll('[data-back]').forEach(btn => btn.onclick = () => showStep(Math.max(1, currentStep - 1)));
 
@@ -260,6 +276,7 @@
                 <div class="method"><small>METODO</small><br>${data.method || 'IA + referencias de mercado y regla comercial.'}</div>
                 <div class="actions"><button type="button" onclick="openMarket('used')">Ver usados</button><button type="button" onclick="openMarket('new')">Ver nuevos</button></div>
                 <div class="notes">${(data.notes || []).map(n => `<div class="note">${n}</div>`).join('')}</div>
+                <div class="actions"><button type="button" onclick="resetQuote()">Cotizar otro vehículo</button></div>
             `;
         }
 
