@@ -19,7 +19,7 @@ CACHE_DB = Path(__file__).resolve().parent.parent / "cotizador_cache.db"
 QUOTE_RANGE_THRESHOLD = 60_000_000
 QUOTE_RANGE_WIDTH_BELOW_THRESHOLD = 3_000_000
 QUOTE_RANGE_WIDTH = 5_000_000
-QUOTE_CACHE_VERSION = 4
+QUOTE_CACHE_VERSION = 5
 DIRECTOR_REVIEW_THRESHOLD = 160_000_000
 
 
@@ -317,17 +317,9 @@ def calculate_quote_from_references(
     age = max(0, datetime.utcnow().year - to_int(year))
     electric = is_electric_vehicle(features)
     estimated_sale = used_price or int(round(reference_price * (0.72 if age <= 1 else 0.67)))
+    offer_before_mileage = int(round(estimated_sale * market_purchase_percent(age, 0, electric)))
     offer = int(round(estimated_sale * market_purchase_percent(age, mileage, electric)))
-
-    if mileage >= 120_000:
-        mileage_adjustment = -10_000_000
-    elif mileage >= 80_000:
-        mileage_adjustment = -8_000_000
-    elif mileage >= 50_000:
-        mileage_adjustment = -4_000_000
-    else:
-        mileage_adjustment = 0
-    offer = max(0, offer + mileage_adjustment)
+    mileage_adjustment = offer - offer_before_mileage
     offer_min, offer_max = get_offer_range(offer)
 
     notes = []

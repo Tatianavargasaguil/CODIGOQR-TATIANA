@@ -54,6 +54,30 @@ class OfferRangeTests(unittest.TestCase):
                 self.assertGreater(result["estimated_sale"], 0)
                 self.assertGreater(result["offer_min"], 0)
 
+    def test_h220_mileage_is_discounted_only_once(self):
+        refs = [{"price": price} for price in (34_900_000, 15_500_000, 24_000_000)]
+        result = cotizador.calculate_quote_from_references(2016, 84_236, {"fuel": "Gasolina"}, [], refs)
+        self.assertEqual(result["estimated_sale"], 24_000_000)
+        self.assertEqual(result["mileage_adjustment"], -1_200_000)
+        self.assertEqual((result["offer_min"], result["offer_max"]), (15_780_000, 18_780_000))
+
+    def test_mileage_brackets_use_only_percentage_discount(self):
+        year = cotizador.datetime.utcnow().year - 2
+        cases = [(0, 0), (49_999, 0), (50_000, -600_000), (79_999, -600_000),
+                 (80_000, -1_200_000), (119_999, -1_200_000), (120_000, -1_920_000)]
+        for mileage, expected_adjustment in cases:
+            with self.subTest(mileage=mileage):
+                result = cotizador.calculate_quote_from_references(year, mileage, {}, [], [{"price": 24_000_000}])
+                self.assertEqual(result["mileage_adjustment"], expected_adjustment)
+                center = (result["offer_min"] + result["offer_max"]) // 2
+                self.assertEqual(center, 18_480_000 + expected_adjustment)
+
+    def test_electric_mileage_adjustment_respects_minimum_percentage(self):
+        year = cotizador.datetime.utcnow().year - 2
+        result = cotizador.calculate_quote_from_references(year, 120_000, {"fuel": "Electrico"}, [], [{"price": 24_000_000}])
+        self.assertEqual(result["mileage_adjustment"], -1_680_000)
+        self.assertEqual((result["offer_min"], result["offer_max"]), (9_300_000, 12_300_000))
+
     def test_claude_search_preserves_electric_rules_and_sources(self):
         year = cotizador.datetime.utcnow().year - 2
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
@@ -153,7 +177,7 @@ class OfferRangeTests(unittest.TestCase):
         self.assertNotEqual(first, second)
 
     def test_new_cache_version_separates_previous_results(self):
-        with patch.object(cotizador, "QUOTE_CACHE_VERSION", 3):
+        with patch.object(cotizador, "QUOTE_CACHE_VERSION", 4):
             previous = cotizador.quote_cache_key("TEST", "MODEL", 2024, 10000, "", {})
         current = cotizador.quote_cache_key("TEST", "MODEL", 2024, 10000, "", {})
         self.assertNotEqual(previous, current)

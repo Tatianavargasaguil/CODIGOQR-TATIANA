@@ -13,7 +13,8 @@ en la oferta y en los botones Ver nuevos / Ver usados. Algunos enlaces pueden
 apuntar a listados de una plataforma. Los precios publicados no equivalen a precios de cierre.
 
 El servidor aplica las reglas comerciales a esas referencias: porcentajes para
-electricos, ajustes por kilometraje, rango de $3 millones por debajo de una oferta
+electricos, ajuste unicamente porcentual por kilometraje (sin descuento fijo adicional),
+rango de $3 millones por debajo de una oferta
 central de $60 millones y de $5 millones desde ese valor, y aviso del director
 desde un precio de referencia de $160 millones sin ocultar los valores.
 Claude obtiene referencias y no puede sustituir estas reglas.

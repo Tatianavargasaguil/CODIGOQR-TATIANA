@@ -282,7 +282,7 @@
                 <div class="cards">
                     <div class="card"><small>Base de referencia</small><strong>${data.reference_price_formatted || 'No encontrado'}</strong></div>
                     <div class="card"><small>Venta estimada</small><strong>${data.estimated_sale_formatted || 'Validar'}</strong></div>
-                    <div class="card"><small>Ajuste kilometraje</small><strong>${data.mileage_adjustment_formatted || '$ 0'}</strong></div>
+                    <div class="card"><small>Ajuste porcentual por kilometraje</small><strong>${data.mileage_adjustment_formatted || '$ 0'}</strong></div>
                 </div>
                 <div class="method"><small>METODO</small><br>${escapeHtml(data.method || 'Referencias de mercado y reglas comerciales.')}
                     ${data.web_search_performed && data.searched_at ? `<br><small>Consulta web: ${escapeHtml(new Date(data.searched_at).toLocaleString('es-CO'))}${data.cache_hit ? ' (resultado guardado de esta consulta)' : ''}</small>` : ''}
