@@ -15,7 +15,10 @@ import requests
 
 DATA_DIR = Path(__file__).resolve().parent / "cotizador_data"
 CACHE_DB = Path(__file__).resolve().parent.parent / "cotizador_cache.db"
+QUOTE_RANGE_THRESHOLD = 60_000_000
+QUOTE_RANGE_WIDTH_BELOW_THRESHOLD = 3_000_000
 QUOTE_RANGE_WIDTH = 5_000_000
+QUOTE_CACHE_VERSION = 2
 DIRECTOR_REVIEW_THRESHOLD = 160_000_000
 
 
@@ -195,7 +198,8 @@ def median_int(values: list[int]) -> int:
 
 def get_offer_range(offer: int) -> tuple[int, int]:
     center = max(0, to_int(offer))
-    half = QUOTE_RANGE_WIDTH // 2
+    width = QUOTE_RANGE_WIDTH_BELOW_THRESHOLD if center < QUOTE_RANGE_THRESHOLD else QUOTE_RANGE_WIDTH
+    half = width // 2
     return max(0, center - half), center + half
 
 
@@ -244,6 +248,7 @@ def quote_cache_key(brand: str, line: str, year: int, mileage: int, version: str
             "traction": normalize_key(features.get("traction") or features.get("traccion")),
             "date": quote_cache_date(),
         }
+    basis["version"] = QUOTE_CACHE_VERSION
     return hashlib.sha256(json.dumps(basis, sort_keys=True).encode("utf-8")).hexdigest()
 
 
@@ -381,7 +386,11 @@ def calculate_deepseek_quote(brand: str, line: str, year: int, mileage: int, ver
         "vehiculo": {"marca": brand, "linea": line, "version": version, "modelo": year, "kilometraje": mileage},
         "caracteristicas": features,
         "referencia_local": local_quote,
-        "instrucciones": "Devuelve solo JSON con los mismos campos. No superes el precio de mercado local y conserva rango de 5 millones.",
+        "instrucciones": (
+            "Devuelve solo JSON con los mismos campos. No superes el precio de mercado local. "
+            "La diferencia entre offer_min y offer_max debe ser de 3 millones si la oferta central "
+            "es menor a 60 millones, y de 5 millones desde 60 millones."
+        ),
     }
     try:
         response = requests.post(
@@ -407,7 +416,15 @@ def calculate_deepseek_quote(brand: str, line: str, year: int, mileage: int, ver
         if not isinstance(quote_data, dict):
             return local_quote
         merged = {**local_quote, **quote_data}
-        offer_min, offer_max = get_offer_range(to_int(merged.get("offer") or merged.get("offer_min") or local_quote["offer_min"]))
+        if quote_data.get("offer"):
+            offer = to_int(quote_data["offer"])
+        elif quote_data.get("offer_min") is not None and quote_data.get("offer_max") is not None:
+            offer = (to_int(quote_data["offer_min"]) + to_int(quote_data["offer_max"])) // 2
+        elif quote_data.get("offer_min"):
+            offer = to_int(quote_data["offer_min"])
+        else:
+            offer = (local_quote["offer_min"] + local_quote["offer_max"]) // 2
+        offer_min, offer_max = get_offer_range(offer)
         merged["offer_min"] = offer_min
         merged["offer_max"] = offer_max
         merged["offer_min_formatted"] = format_cop(offer_min)
