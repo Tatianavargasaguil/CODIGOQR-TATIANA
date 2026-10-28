@@ -79,6 +79,7 @@
         .note { background: rgba(255,255,255,.16); border-left: 4px solid #ffc72c; border-radius: 6px; padding: 12px; font-weight: 700; }
         .director { background: #12090b; color: #fff; border: 3px solid #dc2626; }
         .director .offer { color: #ff3b30; }
+        .director .review-warning { color: #ff3b30; font-weight: 900; margin-bottom: 16px; }
         .modal { position: fixed; inset: 0; background: rgba(7, 12, 45, .72); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10; }
         .modal-box { width: min(1120px, 96vw); max-height: 86vh; overflow: auto; background: white; border-radius: 8px; color: #071955; }
         .modal-head { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; gap: 16px; align-items: start; }
@@ -89,6 +90,7 @@
         th { color: #0b1b66; font-size: 12px; }
         .source-link { color: #009fe3; font-weight: 800; text-decoration: none; white-space: nowrap; }
         .source-link:hover { text-decoration: underline; }
+        .result .source-link { color: #8fddff; }
         .search { margin-bottom: 14px; text-transform: none; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; }
         .error { margin-top: 18px; display: none; background: #fff1f2; color: #991b1b; padding: 16px; border-radius: 8px; font-weight: 700; }
         @media (max-width: 760px) {
@@ -128,7 +130,7 @@
                     <label>Cilindraje<input name="engine" inputmode="numeric"></label>
                     <label>Aire acondicionado<select name="air"><option>Si</option><option>No</option></select></label>
                     <label>Transmision<select name="transmission"><option>Automatica</option><option>Mecanica</option></select></label>
-                    <label>Puertas<select name="doors"><option>5</option><option>4</option><option>3</option><option>2</option></select></label>
+                    <label>Puertas<select name="doors"><option>5</option><option>4</option><option>3</option><option>2</option><option>7</option></select></label>
                     <label>Traccion<select name="traction"><option>4x2</option><option>4x4</option><option>AWD</option></select></label>
                     <label>Combustible<select name="fuel"><option>Gasolina</option><option>Diesel</option><option>Hibrido</option><option>Electrico</option></select></label>
                     <label>Kilometraje<input name="mileage" inputmode="numeric" required></label>
@@ -172,6 +174,7 @@
         const errorBox = document.getElementById('error');
         let currentStep = 1;
         let lastPayload = null;
+        let lastQuote = null;
         let modalItems = [];
 
         function money(value) {
@@ -202,6 +205,7 @@
         function resetQuote() {
             form.reset();
             lastPayload = null;
+            lastQuote = null;
             modalItems = [];
             closeModal();
             document.getElementById('modalRows').innerHTML = '';
@@ -232,7 +236,9 @@
             errorBox.style.display = 'none';
             result.style.display = 'block';
             result.className = 'result';
-            result.innerHTML = '<strong>Calculando...</strong>';
+            result.innerHTML = '<strong>Buscando referencias de precios y calculando la oferta. Puede tardar hasta dos minutos...</strong>';
+            const submitButton = form.querySelector('[type="submit"]');
+            submitButton.disabled = true;
             const fd = new FormData(form);
             lastPayload = {
                 brand: fd.get('brand'),
@@ -259,23 +265,31 @@
                 result.style.display = 'none';
                 errorBox.textContent = err.message;
                 errorBox.style.display = 'block';
+            } finally {
+                submitButton.disabled = false;
             }
         });
 
         function renderResult(data) {
+            lastQuote = data;
             result.className = 'result' + (data.director_review ? ' director' : '');
-            const offer = data.director_review ? 'Validar con director' : `${data.offer_min_formatted} - ${data.offer_max_formatted}`;
+            const offer = `${data.offer_min_formatted} - ${data.offer_max_formatted}`;
+            const sources = Object.values(data.market_references || {}).flat();
             result.innerHTML = `
                 <h3>Oferta estimada</h3>
                 <div class="offer">${offer}</div>
+                ${data.director_review ? '<div class="review-warning">Validar con director antes de aprobar la compra.</div>' : ''}
                 <div class="cards">
                     <div class="card"><small>Base de referencia</small><strong>${data.reference_price_formatted || 'No encontrado'}</strong></div>
                     <div class="card"><small>Venta estimada</small><strong>${data.estimated_sale_formatted || 'Validar'}</strong></div>
                     <div class="card"><small>Ajuste kilometraje</small><strong>${data.mileage_adjustment_formatted || '$ 0'}</strong></div>
                 </div>
-                <div class="method"><small>METODO</small><br>${data.method || 'IA + referencias de mercado y regla comercial.'}</div>
+                <div class="method"><small>METODO</small><br>${escapeHtml(data.method || 'Referencias de mercado y reglas comerciales.')}
+                    ${data.web_search_performed && data.searched_at ? `<br><small>Consulta web: ${escapeHtml(new Date(data.searched_at).toLocaleString('es-CO'))}${data.cache_hit ? ' (resultado guardado de esta consulta)' : ''}</small>` : ''}
+                </div>
                 <div class="actions"><button type="button" onclick="openMarket('used')">Ver usados</button><button type="button" onclick="openMarket('new')">Ver nuevos</button></div>
-                <div class="notes">${(data.notes || []).map(n => `<div class="note">${n}</div>`).join('')}</div>
+                <div class="notes">${(data.notes || []).map(n => `<div class="note">${escapeHtml(n)}</div>`).join('')}</div>
+                ${sources.length ? `<div class="method"><small>FUENTES DE LA CONSULTA WEB</small><ul>${sources.map(i => `<li><a class="source-link" href="${escapeHtml(sourceUrl(i))}" target="_blank" rel="noopener noreferrer">${escapeHtml(i.platform || i.vehicle)} - ${escapeHtml(i.price_formatted)}</a></li>`).join('')}</ul></div>` : ''}
                 <div class="actions"><button type="button" onclick="resetQuote()">Cotizar otro vehículo</button></div>
             `;
         }
@@ -285,10 +299,11 @@
             const qs = new URLSearchParams({
                 brand: lastPayload.brand || '', line: lastPayload.line || '', version: lastPayload.version || '', year: lastPayload.year || ''
             });
-            const res = await fetch(`/api/cotizador/market/${kind}?${qs}`, {credentials:'include'});
-            const data = await res.json();
+            const data = lastQuote?.web_search_performed
+                ? {items: lastQuote.market_references?.[kind] || []}
+                : await (await fetch(`/api/cotizador/market/${kind}?${qs}`, {credentials:'include'})).json();
             modalItems = data.items || [];
-            document.getElementById('modalKind').textContent = kind === 'new' ? 'NUEVOS ENCONTRADOS' : 'USADOS ENCONTRADOS';
+            document.getElementById('modalKind').textContent = (kind === 'new' ? 'NUEVOS' : 'USADOS') + (lastQuote?.web_search_performed ? ' - CONSULTA WEB' : ' - CATALOGO LOCAL');
             document.getElementById('modalTitle').textContent = `${lastPayload.brand || ''} ${lastPayload.line || ''} ${lastPayload.version || ''} ${lastPayload.year || ''}`.toUpperCase();
             document.getElementById('tableSearch').value = '';
             renderRows(modalItems);

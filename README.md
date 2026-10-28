@@ -1,5 +1,30 @@
 # Sistema de Ubicación de Vehículos con Código QR
 
+## Cotizador con Claude y busqueda web
+
+Configura `ANTHROPIC_API_KEY` en `.env` y, opcionalmente, `ANTHROPIC_MODEL`
+(por defecto `claude-sonnet-5-5`). La clave se usa solo en el servidor y `.env`
+esta excluido de Git. La cuenta de Anthropic debe tener saldo y busqueda web habilitada.
+
+El cotizador usa la [busqueda web de Claude](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool)
+para obtener precios publicados de nuevos y usados en Colombia. Conserva las URLs
+presentes en los resultados de busqueda; las referencias y su fecha se muestran
+en la oferta y en los botones Ver nuevos / Ver usados. Algunos enlaces pueden
+apuntar a listados de una plataforma. Los precios publicados no equivalen a precios de cierre.
+
+El servidor aplica las reglas comerciales a esas referencias: porcentajes para
+electricos, ajustes por kilometraje, rango de $3 millones por debajo de una oferta
+central de $60 millones y de $5 millones desde ese valor, y aviso del director
+desde un precio de referencia de $160 millones sin ocultar los valores.
+Claude obtiene referencias y no puede sustituir estas reglas.
+
+Las consultas exitosas se reutilizan durante el dia para los mismos datos del
+vehiculo. Si falla Claude o no encuentra fuentes utilizables, se usan los catalogos
+locales con un aviso visible y sin guardar ese fallo en cache. Cada busqueda consume
+saldo de la API. Tras cambiar la configuracion o el codigo Python, reinicia la app.
+
+Pruebas del cotizador: `python -m unittest discover -s tests -v`.
+
 ## 📋 Descripción
 
 Sistema refactorizado que permite:
